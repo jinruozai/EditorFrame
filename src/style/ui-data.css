@@ -1,0 +1,163 @@
+/* editorframe — UI library: data display */
+
+/* ── list (virtualized) ─────────────────────────────────────────── */
+.ef-ui-list {
+  position: relative;
+  height: 240px;
+  overflow-y: auto;
+  background: var(--ef-bg-1);
+  border: 1px solid var(--ef-border);
+  border-radius: var(--ef-r-2);
+}
+.ef-ui-list-spacer { position: relative; width: 100%; }
+.ef-ui-list-window {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  will-change: transform;
+}
+.ef-ui-list-row {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ef-space-2);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-1);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--ef-border);
+  box-sizing: border-box;
+}
+.ef-ui-list-row:hover { background: var(--ef-hover); color: var(--ef-fg-0); }
+.ef-ui-list-row-active {
+  background: var(--ef-selected);
+  color: var(--ef-fg-0);
+}
+
+/* ── tree ───────────────────────────────────────────────────────── */
+.ef-ui-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  width: 100%;
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-1);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.ef-ui-tree-row:hover { background: var(--ef-hover); color: var(--ef-fg-0); }
+.ef-ui-tree-row-active { background: var(--ef-selected); color: var(--ef-fg-0); }
+.ef-ui-tree-arrow {
+  display: inline-block;
+  width: 12px;
+  text-align: center;
+  color: var(--ef-fg-2);
+  font-size: 9px;
+  cursor: pointer;
+}
+.ef-ui-tree-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── table ──────────────────────────────────────────────────────── */
+.ef-ui-table {
+  display: flex;
+  flex-direction: column;
+  background: var(--ef-bg-1);
+  border: 1px solid var(--ef-border);
+  border-radius: var(--ef-r-2);
+  overflow: hidden;
+}
+.ef-ui-table-head {
+  display: flex;
+  background: var(--ef-bg-2);
+  border-bottom: 1px solid var(--ef-border-strong);
+  font: 600 var(--ef-fs-xs) var(--ef-font-ui);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--ef-fg-2);
+  flex-shrink: 0;
+}
+.ef-ui-table-th {
+  padding: var(--ef-space-1) var(--ef-space-2);
+  border-right: 1px solid var(--ef-border);
+  box-sizing: border-box;
+}
+.ef-ui-table-th:last-child { border-right: 0; }
+.ef-ui-table-body {
+  border: 0;
+  border-radius: 0;
+  flex: 1 1 auto;
+}
+.ef-ui-table-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-1);
+}
+.ef-ui-table-td {
+  padding: 0 var(--ef-space-2);
+  border-right: 1px solid var(--ef-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.ef-ui-table-td:last-child { border-right: 0; }
+
+/* ── breadcrumbs ────────────────────────────────────────────────── */
+.ef-ui-crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--ef-space-1);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-2);
+}
+.ef-ui-crumbs-link {
+  background: transparent;
+  border: 0;
+  color: var(--ef-fg-1);
+  font: inherit;
+  padding: 0 var(--ef-space-1);
+  cursor: pointer;
+  border-radius: var(--ef-r-1);
+}
+.ef-ui-crumbs-link:hover { background: var(--ef-hover); color: var(--ef-fg-0); }
+.ef-ui-crumbs-static { padding: 0 var(--ef-space-1); }
+.ef-ui-crumbs-last { color: var(--ef-fg-0); font-weight: 600; }
+.ef-ui-crumbs-sep { color: var(--ef-fg-3); }
+
+/* ── progressBar ────────────────────────────────────────────────── */
+.ef-ui-progress {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: var(--ef-bg-2);
+  border-radius: var(--ef-r-pill);
+  overflow: hidden;
+}
+.ef-ui-progress-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: var(--ef-accent);
+  transition: width var(--ef-dur-med) var(--ef-ease);
+}
+.ef-ui-progress-ind .ef-ui-progress-fill {
+  width: 30% !important;
+  animation: ef-progress-ind 1.4s ease-in-out infinite;
+}
+@keyframes ef-progress-ind {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.ef-ui-progress-label {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font: var(--ef-fs-xs) var(--ef-font-ui);
+  color: var(--ef-fg-0);
+  pointer-events: none;
+}

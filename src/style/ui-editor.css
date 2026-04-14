@@ -1,0 +1,149 @@
+/* editorframe — UI library: editor specials */
+
+/* ── gradientInput ──────────────────────────────────────────────── */
+.ef-ui-gradient {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ef-space-2);
+  width: 100%;
+}
+.ef-ui-gradient-bar {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  border-radius: var(--ef-r-2);
+  border: 1px solid var(--ef-border-strong);
+  cursor: copy;
+  background: linear-gradient(to right, #000, #fff);
+}
+.ef-ui-gradient-stops {
+  position: relative;
+  height: 12px;
+  margin-top: -2px;
+}
+.ef-ui-gradient-stop {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border: 2px solid var(--ef-fg-0);
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.5);
+}
+.ef-ui-gradient-stop-active {
+  border-color: var(--ef-accent);
+  transform: scale(1.15);
+}
+.ef-ui-gradient-editor { display: flex; }
+
+/* ── curveInput ─────────────────────────────────────────────────── */
+.ef-ui-curve {
+  display: inline-block;
+  background: var(--ef-bg-2);
+  border: 1px solid var(--ef-border-input);
+  border-radius: var(--ef-r-2);
+  padding: 4px;
+}
+.ef-ui-curve-canvas {
+  display: block;
+  cursor: crosshair;
+}
+
+/* ── codeInput ──────────────────────────────────────────────────── */
+.ef-ui-code {
+  display: flex;
+  width: 100%;
+  background: var(--ef-bg-2);
+  border: 1px solid var(--ef-border-input);
+  border-radius: var(--ef-r-2);
+  position: relative;
+  overflow: hidden;
+}
+.ef-ui-code-lang {
+  position: absolute;
+  top: 4px; right: 8px;
+  font: var(--ef-fs-xs) var(--ef-font-mono);
+  color: var(--ef-fg-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  z-index: 1;
+  pointer-events: none;
+}
+.ef-ui-code-gutter {
+  flex-shrink: 0;
+  padding: var(--ef-space-2) var(--ef-space-1);
+  background: var(--ef-bg-1);
+  color: var(--ef-fg-3);
+  font: var(--ef-fs-sm)/var(--ef-lh-base) var(--ef-font-mono);
+  text-align: right;
+  min-width: 28px;
+  white-space: pre;
+  overflow: hidden;
+  user-select: none;
+  border-right: 1px solid var(--ef-border);
+}
+.ef-ui-code-text {
+  flex: 1 1 auto;
+  background: transparent;
+  color: var(--ef-fg-0);
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  padding: var(--ef-space-2);
+  font: var(--ef-fs-sm)/var(--ef-lh-base) var(--ef-font-mono);
+  white-space: pre;
+  overflow: auto;
+  tab-size: 2;
+}
+
+/* ── pathInput ──────────────────────────────────────────────────── */
+.ef-ui-path-browse {
+  width: 22px;
+  height: 22px;
+  background: var(--ef-bg-3);
+  border: 1px solid var(--ef-border-strong);
+  border-radius: var(--ef-r-1);
+  color: var(--ef-fg-1);
+  cursor: pointer;
+  font: var(--ef-fs-md) var(--ef-font-ui);
+  padding: 0;
+}
+.ef-ui-path-browse:hover { background: var(--ef-bg-4); color: var(--ef-fg-0); }
+
+/* ── fileInput ──────────────────────────────────────────────────── */
+.ef-ui-fileinput {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 80px;
+  background: var(--ef-bg-2);
+  border: 1px dashed var(--ef-border-strong);
+  border-radius: var(--ef-r-3);
+  cursor: pointer;
+  transition: background var(--ef-dur-fast) var(--ef-ease),
+              border var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-fileinput:hover { border-color: var(--ef-accent-soft); background: var(--ef-bg-3); }
+.ef-ui-fileinput-over {
+  background: var(--ef-accent-bg);
+  border-color: var(--ef-accent);
+  border-style: solid;
+}
+.ef-ui-fileinput-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ef-space-1);
+  padding: var(--ef-space-3);
+  pointer-events: none;
+}
+.ef-ui-fileinput-icon { font-size: var(--ef-size-icon-lg); color: var(--ef-fg-2); }
+.ef-ui-fileinput-text {
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-1);
+  text-align: center;
+  word-break: break-all;
+}

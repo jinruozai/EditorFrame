@@ -1,0 +1,336 @@
+/* editorframe — UI library: base widgets
+ *
+ * Buttons, icons, tooltips, popovers, kbd, badges, tags, spinners, dividers.
+ * All values are theme tokens (var(--ef-*)). No literals.
+ */
+
+/* ── icon ─────────────────────────────────────────── */
+.ef-ui-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  user-select: none;
+}
+.ef-ui-icon-sm { font-size: var(--ef-size-icon-sm); min-width: var(--ef-size-icon-sm); }
+.ef-ui-icon-md { font-size: var(--ef-size-icon-md); min-width: var(--ef-size-icon-md); }
+.ef-ui-icon-lg { font-size: var(--ef-size-icon-lg); min-width: var(--ef-size-icon-lg); }
+
+/* ── button ───────────────────────────────────────── */
+.ef-ui-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ef-space-1);
+  padding: 0 var(--ef-space-3);
+  background: var(--ef-bg-2);
+  color: var(--ef-fg-1);
+  border: 1px solid var(--ef-border-strong);
+  border-radius: var(--ef-r-2);
+  font: var(--ef-fs-md) var(--ef-font-ui);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: 0 1px 0 rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
+  transform: translateZ(0);
+  transition:
+    background  var(--ef-dur-fast) var(--ef-ease),
+    color       var(--ef-dur-fast) var(--ef-ease),
+    border      var(--ef-dur-fast) var(--ef-ease),
+    box-shadow  var(--ef-dur-med)  var(--ef-ease),
+    transform   var(--ef-dur-fast) var(--ef-ease);
+}
+/* Click-flash overlay (pure CSS, no JS). Expands a soft radial highlight on press. */
+.ef-ui-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, currentColor 0%, transparent 60%);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity var(--ef-dur-med) var(--ef-ease),
+              transform var(--ef-dur-med) var(--ef-ease);
+  pointer-events: none;
+  z-index: 0;
+}
+.ef-ui-btn > * { position: relative; z-index: 1; }
+.ef-ui-btn-sm { height: var(--ef-size-h-sm); padding: 0 var(--ef-space-2); font-size: var(--ef-fs-sm); }
+.ef-ui-btn-md { height: var(--ef-size-h-md); }
+.ef-ui-btn-lg { height: var(--ef-size-h-lg); padding: 0 var(--ef-space-4); font-size: var(--ef-fs-lg); }
+.ef-ui-btn:hover {
+  background: var(--ef-bg-3);
+  color: var(--ef-fg-0);
+  border-color: var(--ef-c-07);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.ef-ui-btn:active {
+  background: var(--ef-bg-4);
+  transform: translateY(0) scale(0.985);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.35);
+  transition-duration: 40ms;
+}
+.ef-ui-btn:active::before {
+  opacity: .14;
+  transform: scale(1);
+  transition-duration: 0ms;
+}
+.ef-ui-btn:focus-visible {
+  outline: none;
+  border-color: var(--ef-accent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--ef-accent) 28%, transparent),
+    0 1px 0 rgba(0,0,0,.18);
+}
+.ef-ui-btn[disabled] {
+  opacity: .38;
+  pointer-events: none;
+  box-shadow: none;
+  transform: none;
+}
+
+.ef-ui-btn-primary {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ef-accent-soft) 65%, var(--ef-accent)) 0%,
+    var(--ef-accent) 100%);
+  color: var(--ef-accent-fg);
+  border-color: color-mix(in srgb, var(--ef-accent) 70%, #000);
+  box-shadow:
+    0 1px 0 rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+.ef-ui-btn-primary:hover {
+  background: linear-gradient(180deg,
+    var(--ef-accent-soft) 0%,
+    color-mix(in srgb, var(--ef-accent-soft) 60%, var(--ef-accent)) 100%);
+  border-color: var(--ef-accent-soft);
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--ef-accent) 40%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.22);
+}
+.ef-ui-btn-primary:active {
+  background: var(--ef-accent);
+  box-shadow:
+    inset 0 2px 4px color-mix(in srgb, #000 40%, transparent),
+    0 0 0 0 transparent;
+}
+
+.ef-ui-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.ef-ui-btn-ghost:hover {
+  background: var(--ef-hover);
+  border-color: transparent;
+  box-shadow: none;
+}
+.ef-ui-btn-ghost:active { background: var(--ef-active); box-shadow: none; }
+
+.ef-ui-btn-danger {
+  background: var(--ef-error-bg);
+  color: var(--ef-error);
+  border-color: var(--ef-error);
+}
+.ef-ui-btn-danger:hover {
+  background: var(--ef-error);
+  color: #fff;
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--ef-error) 40%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+.ef-ui-btn-danger:focus-visible {
+  border-color: var(--ef-error);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--ef-error) 32%, transparent),
+    0 1px 0 rgba(0,0,0,.18);
+}
+
+/* ── icon button (square, ghost by default) ───────── */
+.ef-ui-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ef-r-2);
+  color: var(--ef-fg-2);
+  cursor: pointer;
+  padding: 0;
+  transform: translateZ(0);
+  transition: background var(--ef-dur-fast) var(--ef-ease),
+              color      var(--ef-dur-fast) var(--ef-ease),
+              transform  var(--ef-dur-fast) var(--ef-ease),
+              box-shadow var(--ef-dur-med) var(--ef-ease);
+}
+.ef-ui-icon-btn-sm { width: var(--ef-size-h-sm); height: var(--ef-size-h-sm); }
+.ef-ui-icon-btn-md { width: var(--ef-size-h-md); height: var(--ef-size-h-md); }
+.ef-ui-icon-btn-lg { width: var(--ef-size-h-lg); height: var(--ef-size-h-lg); }
+.ef-ui-icon-btn:hover {
+  background: var(--ef-hover);
+  color: var(--ef-fg-0);
+}
+.ef-ui-icon-btn:active {
+  transform: scale(0.9);
+  background: var(--ef-active);
+  transition-duration: 40ms;
+}
+.ef-ui-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ef-accent) 36%, transparent);
+}
+.ef-ui-icon-btn[disabled] { opacity: .38; pointer-events: none; }
+
+/* ── tooltip ──────────────────────────────────────── */
+.ef-ui-tooltip {
+  position: fixed;
+  padding: var(--ef-space-1) var(--ef-space-2);
+  background: var(--ef-bg-3);
+  color: var(--ef-fg-0);
+  border: 1px solid var(--ef-border-strong);
+  border-radius: var(--ef-r-2);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  box-shadow: var(--ef-shadow-2);
+  pointer-events: none;
+  z-index: var(--ef-z-popover);
+  max-width: 240px;
+  white-space: pre-wrap;
+  animation: ef-fade-in var(--ef-dur-fast) var(--ef-ease) both;
+}
+
+/* ── popover ──────────────────────────────────────── */
+.ef-ui-popover {
+  position: fixed;
+  background: var(--ef-bg-2);
+  color: var(--ef-fg-0);
+  border: 1px solid var(--ef-border-strong);
+  border-radius: var(--ef-r-3);
+  box-shadow: var(--ef-shadow-3);
+  z-index: var(--ef-z-popover);
+  min-width: 120px;
+  transform-origin: top center;
+  animation: ef-pop-in var(--ef-dur-med) var(--ef-ease) both;
+}
+
+@keyframes ef-fade-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ef-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ef-ui-tooltip, .ef-ui-popover { animation: none; }
+}
+
+/* ── kbd ──────────────────────────────────────────── */
+.ef-ui-kbd {
+  display: inline-block;
+  padding: 1px var(--ef-space-1);
+  background: var(--ef-bg-2);
+  border: 1px solid var(--ef-border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--ef-r-1);
+  font: var(--ef-fs-xs) var(--ef-font-mono);
+  color: var(--ef-fg-1);
+  line-height: 1.2;
+}
+
+/* ── badge ────────────────────────────────────────── */
+.ef-ui-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: var(--ef-r-pill);
+  font: 600 var(--ef-fs-xs) var(--ef-font-ui);
+  background: var(--ef-bg-3);
+  color: var(--ef-fg-0);
+  letter-spacing: 0;
+}
+.ef-ui-badge-success { background: var(--ef-success-bg); color: var(--ef-success); }
+.ef-ui-badge-warn    { background: var(--ef-warn-bg);    color: var(--ef-warn); }
+.ef-ui-badge-error   { background: var(--ef-error-bg);   color: var(--ef-error); }
+.ef-ui-badge-info    { background: var(--ef-info-bg);    color: var(--ef-info); }
+.ef-ui-badge-dot { min-width: 8px; width: 8px; height: 8px; padding: 0; }
+
+/* ── tag ──────────────────────────────────────────── */
+.ef-ui-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px var(--ef-space-1) 1px var(--ef-space-2);
+  background: var(--ef-bg-3);
+  color: var(--ef-fg-0);
+  border: 1px solid var(--ef-border-strong);
+  border-radius: var(--ef-r-2);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  height: var(--ef-size-h-sm);
+  box-sizing: border-box;
+}
+.ef-ui-tag-text { padding-right: 2px; }
+.ef-ui-tag-close {
+  width: 14px; height: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ef-fg-2);
+  border-radius: var(--ef-r-1);
+  cursor: pointer;
+  font: 14px/1 var(--ef-font-ui);
+  padding: 0;
+}
+.ef-ui-tag-close:hover { background: var(--ef-bg-4); color: var(--ef-fg-0); }
+
+/* ── spinner ──────────────────────────────────────── */
+.ef-ui-spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid var(--ef-border-strong);
+  border-top-color: var(--ef-accent);
+  animation: ef-spin .8s linear infinite;
+}
+.ef-ui-spinner-sm { width: 12px; height: 12px; border-width: 2px; }
+.ef-ui-spinner-md { width: 16px; height: 16px; border-width: 2px; }
+.ef-ui-spinner-lg { width: 24px; height: 24px; border-width: 3px; }
+@keyframes ef-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ef-ui-spinner { animation-duration: 2s; } }
+
+/* ── divider ──────────────────────────────────────── */
+.ef-ui-divider-h {
+  width: 100%;
+  height: 1px;
+  background: var(--ef-border);
+  margin: var(--ef-space-2) 0;
+}
+.ef-ui-divider-v {
+  width: 1px;
+  align-self: stretch;
+  background: var(--ef-border);
+  margin: 0 var(--ef-space-2);
+}
+.ef-ui-divider-labeled {
+  display: flex;
+  align-items: center;
+  gap: var(--ef-space-2);
+  background: transparent;
+  height: auto;
+}
+.ef-ui-divider-labeled::before,
+.ef-ui-divider-labeled::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ef-border);
+}
+.ef-ui-divider-label {
+  font: var(--ef-fs-xs) var(--ef-font-ui);
+  color: var(--ef-fg-2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}

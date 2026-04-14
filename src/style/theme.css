@@ -1,0 +1,209 @@
+/* editorframe — theme tokens (source of truth for ALL colors / sizes / motion)
+ *
+ * Three layers (read top → down):
+ *   Layer 1 — Primitives  : raw hex / px values, named structurally (--ef-c-04)
+ *   Layer 2 — Roles       : semantic mapping onto primitives (--ef-bg-1, --ef-fg-2)
+ *   Layer 3 — Components  : the rare per-component tweak that isn't a role
+ *
+ * ALL non-token CSS in dock.css / widget.css / ui-*.css must reference Layer 2
+ * roles, not Layer 1 primitives. Themes (dark / light) only override Layer 1
+ * primitives + a few Layer 2 mappings; Layer 3 stays put.
+ *
+ * Naming convention:
+ *   --ef-c-NN     12-step grayscale primitive (00 = darkest, 11 = lightest)
+ *   --ef-c-NAME   semantic primitive (accent / success / warn / error / info)
+ *   --ef-bg-N     background depth ramp role (0 = deepest)
+ *   --ef-fg-N     foreground emphasis role (0 = strongest)
+ *   --ef-border*  border roles
+ *   --ef-r-N      radius scale
+ *   --ef-space-N  spacing scale (4 8 12 16 24 32)
+ *   --ef-size-N   control size scale (h: row heights / icons)
+ *   --ef-dur-N    motion durations
+ *   --ef-z-N      z-index scale
+ *   --ef-shadow-N elevation shadows
+ *   --ef-font-*   font stacks
+ */
+
+:root {
+  /* ── Layer 1 — Primitives (Dark theme — default) ──────────────── */
+
+  /* 12-step gray ramp (matches doc/editor_style.html exactly). */
+  --ef-c-00: #0c0c0e;   /* darkest — viewport background */
+  --ef-c-01: #111113;
+  --ef-c-02: #16161a;
+  --ef-c-03: #1c1c20;
+  --ef-c-04: #24242a;
+  --ef-c-05: #2a2a30;
+  --ef-c-06: #38383f;
+  --ef-c-07: #4a4a52;
+  --ef-c-08: #5e5e66;
+  --ef-c-09: #72727c;
+  --ef-c-10: #9494a0;
+  --ef-c-11: #e8e8f0;   /* lightest — primary text */
+
+  /* Brand accent (violet) — two values for derived hover/active. */
+  --ef-c-accent:      #7b6ef6;
+  --ef-c-accent-soft: #a89ff8;
+
+  /* Semantic colors — green / amber / red / cyan, one each. */
+  --ef-c-success: #3ecf8e;
+  --ef-c-warn:    #f0a050;
+  --ef-c-error:   #e05555;
+  --ef-c-info:    #38bdf8;
+
+  /* ── Layer 2 — Roles (semantic, point at primitives) ───────────── */
+
+  /* Background depth ramp (deepest → highest panel). */
+  --ef-bg-0: var(--ef-c-00);   /* viewport */
+  --ef-bg-1: var(--ef-c-01);   /* dock body */
+  --ef-bg-2: var(--ef-c-03);   /* input fields, inset wells */
+  --ef-bg-3: var(--ef-c-05);   /* hover surfaces, dropdowns */
+  --ef-bg-4: var(--ef-c-06);   /* active surfaces */
+
+  /* Foreground emphasis ramp (strongest → most muted). */
+  --ef-fg-0: var(--ef-c-11);   /* primary text */
+  --ef-fg-1: #c4c4cc;          /* body text */
+  --ef-fg-2: var(--ef-c-10);   /* labels */
+  --ef-fg-3: var(--ef-c-09);   /* placeholder / disabled */
+
+  /* Borders. */
+  --ef-border:        var(--ef-c-03);
+  --ef-border-strong: var(--ef-c-05);
+  --ef-border-input:  var(--ef-c-05);
+
+  /* Brand. */
+  --ef-accent:      var(--ef-c-accent);
+  --ef-accent-soft: var(--ef-c-accent-soft);
+  --ef-accent-fg:   #ffffff;
+  --ef-accent-bg:   color-mix(in srgb, var(--ef-c-accent) 14%, transparent);
+  --ef-accent-bg-strong: color-mix(in srgb, var(--ef-c-accent) 22%, transparent);
+
+  /* States — derived from accent via color-mix so they shift with the theme. */
+  --ef-hover:       color-mix(in srgb, var(--ef-c-11)    6%, transparent);
+  --ef-active:      color-mix(in srgb, var(--ef-c-accent) 18%, transparent);
+  --ef-selected:    color-mix(in srgb, var(--ef-c-accent) 22%, transparent);
+  --ef-focus-ring:  var(--ef-c-accent);
+
+  /* Semantic state colors as text + bg pairs. */
+  --ef-success:    var(--ef-c-success);
+  --ef-success-bg: color-mix(in srgb, var(--ef-c-success) 12%, transparent);
+  --ef-warn:       var(--ef-c-warn);
+  --ef-warn-bg:    color-mix(in srgb, var(--ef-c-warn)    14%, transparent);
+  --ef-error:      var(--ef-c-error);
+  --ef-error-bg:   color-mix(in srgb, var(--ef-c-error)   14%, transparent);
+  --ef-info:       var(--ef-c-info);
+  --ef-info-bg:    color-mix(in srgb, var(--ef-c-info)    12%, transparent);
+
+  /* ── Layer 1 — Spacing scale (4-pt grid) ───────────────────────── */
+  --ef-space-1: 4px;
+  --ef-space-2: 8px;
+  --ef-space-3: 12px;
+  --ef-space-4: 16px;
+  --ef-space-5: 24px;
+  --ef-space-6: 32px;
+
+  /* ── Layer 1 — Sizing scale (control heights, icon sizes) ──────── */
+  --ef-size-h-xs: 18px;
+  --ef-size-h-sm: 22px;
+  --ef-size-h-md: 26px;   /* default control height */
+  --ef-size-h-lg: 32px;
+  --ef-size-icon-sm: 12px;
+  --ef-size-icon-md: 14px;
+  --ef-size-icon-lg: 18px;
+
+  /* ── Layer 1 — Radius scale ────────────────────────────────────── */
+  --ef-r-1: 2px;
+  --ef-r-2: 3px;
+  --ef-r-3: 5px;
+  --ef-r-4: 7px;
+  --ef-r-pill: 999px;
+
+  /* ── Layer 1 — Typography ──────────────────────────────────────── */
+  --ef-font-ui:   -apple-system, BlinkMacSystemFont, 'Geist', 'Inter', system-ui, sans-serif;
+  --ef-font-mono: 'Geist Mono', 'JetBrains Mono', 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  --ef-fs-xs: 10px;
+  --ef-fs-sm: 11px;
+  --ef-fs-md: 12px;   /* default body */
+  --ef-fs-lg: 13px;
+  --ef-fs-xl: 14px;
+  --ef-lh-tight: 1.2;
+  --ef-lh-base:  1.5;
+
+  /* ── Layer 1 — Motion ──────────────────────────────────────────── */
+  --ef-dur-fast: 80ms;    /* hover / focus / press */
+  --ef-dur-med:  160ms;   /* dropdowns, popovers */
+  --ef-dur-slow: 240ms;   /* drawers, modals */
+  --ef-ease:     cubic-bezier(.2, .8, .2, 1);
+
+  /* ── Layer 1 — Z-index scale ───────────────────────────────────── */
+  --ef-z-content:  1;
+  --ef-z-sticky:   10;
+  --ef-z-dock-overlay: 100;     /* focus mode */
+  --ef-z-popover:  1000;
+  --ef-z-modal:    1100;
+  --ef-z-toast:    1200;
+  --ef-z-drag:     1300;        /* drag ghosts always on top */
+
+  /* ── Layer 1 — Shadows (subtle, elevation-based) ───────────────── */
+  --ef-shadow-1: 0 1px 2px rgba(0,0,0,.4);
+  --ef-shadow-2: 0 2px 8px rgba(0,0,0,.5);
+  --ef-shadow-3: 0 4px 16px rgba(0,0,0,.6);
+  --ef-shadow-4: 0 8px 32px rgba(0,0,0,.7);
+
+  /* ── Layer 3 — Component-specific (rare; only if not a role) ───── */
+  --ef-toolbar-h:    28px;
+  --ef-tab-h:        28px;
+  --ef-control-px:   8px;       /* default horizontal padding inside controls */
+
+  /* Legacy aliases — kept until Phase 2 grep-replace finishes.
+   * dock.css / widget.css will be migrated to use the new role names directly,
+   * then these can be removed. */
+  --ef-color-bg-0:        var(--ef-bg-0);
+  --ef-color-bg-1:        var(--ef-bg-1);
+  --ef-color-border:      var(--ef-border);
+  --ef-color-fg-0:        var(--ef-fg-0);
+  --ef-color-fg-2:        var(--ef-fg-2);
+  --ef-color-accent:      var(--ef-accent);
+  --ef-color-accent-soft: var(--ef-accent-soft);
+}
+
+/* ── Light theme — only the primitives flip; roles inherit. ────────── */
+:root[data-ef-theme="light"] {
+  --ef-c-00: #f4f4f7;
+  --ef-c-01: #ffffff;
+  --ef-c-02: #f8f8fa;
+  --ef-c-03: #e6e6ec;
+  --ef-c-04: #d8d8e0;
+  --ef-c-05: #c8c8d2;
+  --ef-c-06: #b0b0bc;
+  --ef-c-07: #8e8e9c;
+  --ef-c-08: #6e6e7a;
+  --ef-c-09: #54545e;
+  --ef-c-10: #38383f;
+  --ef-c-11: #18181c;
+
+  --ef-c-accent:      #5b4ee0;
+  --ef-c-accent-soft: #8278f0;
+
+  --ef-c-success: #16a163;
+  --ef-c-warn:    #c97a1a;
+  --ef-c-error:   #c53030;
+  --ef-c-info:    #1e88c4;
+
+  /* Light theme needs lighter shadows or they look like ink blots. */
+  --ef-shadow-1: 0 1px 2px rgba(20,20,40,.08);
+  --ef-shadow-2: 0 2px 8px rgba(20,20,40,.10);
+  --ef-shadow-3: 0 4px 16px rgba(20,20,40,.12);
+  --ef-shadow-4: 0 8px 32px rgba(20,20,40,.16);
+
+  --ef-fg-1: #2a2a30;
+  --ef-accent-fg: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ef-dur-fast: 0ms;
+    --ef-dur-med:  0ms;
+    --ef-dur-slow: 0ms;
+  }
+}

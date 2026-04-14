@@ -1,5 +1,9 @@
-// Minimal reactive core — signal / effect / batch / onCleanup.
+// Minimal reactive core — signal / effect / derived / batch / onCleanup.
 // Exposed on the global EF namespace. No imports, no modules.
+//
+// This file is the zero-dependency bottom of the framework. It does NOT call
+// EF.reportError — effect cleanup failures go to console.error to avoid a
+// circular dependency with errors.js (which itself uses signal()). See § 4.7.
 ;(function (EF) {
   'use strict'
 
@@ -52,7 +56,7 @@
       eff.deps.forEach(function (s) { s.delete(eff) })
       eff.deps.clear()
       for (let i = 0; i < eff.cleanups.length; i++) {
-        try { eff.cleanups[i]() } catch (e) {}
+        try { eff.cleanups[i]() } catch (e) { console.error(e) }
       }
     }
   }
@@ -71,8 +75,23 @@
     }
   }
 
-  EF.signal = signal
-  EF.effect = effect
+  // derived(fn) → read-only signal whose value is the result of fn().
+  // Re-runs when any signal read inside fn changes. Backed by an effect that
+  // writes into an internal signal, so downstream effects can subscribe to it
+  // exactly the same way as a plain signal. Object.is dirty-check ensures
+  // unchanged outputs don't re-notify.
+  function derived(fn) {
+    const out = signal(undefined)
+    const dispose = effect(function () { out.set(fn()) })
+    const read = function () { return out() }
+    read.peek = function () { return out.peek() }
+    read.dispose = dispose
+    return read
+  }
+
+  EF.signal    = signal
+  EF.effect    = effect
+  EF.derived   = derived
   EF.onCleanup = onCleanup
-  EF.batch = batch
+  EF.batch     = batch
 })(window.EF = window.EF || {})

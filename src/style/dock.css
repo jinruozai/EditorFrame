@@ -1,25 +1,18 @@
-/* Editor Framework — Dock styles
- * Uses semantic tokens consistent with doc/editor_style.html palette.
- * Zero external font deps; falls back gracefully. */
-
-:root {
-  --c00:#0c0c0e; --c01:#111113; --c02:#161618; --c03:#1c1c1f;
-  --c04:#222226; --c05:#2a2a2f; --c06:#38383f; --c07:#505058;
-  --c08:#72727c; --c09:#9494a0; --c10:#c4c4cc; --c11:#e8e8f0;
-  --ac:#7b6ef6; --ac2:#a89ff8;
-  --r2:3px; --r3:5px;
-  --sans: -apple-system, BlinkMacSystemFont, 'Geist', system-ui, sans-serif;
-  --mono: 'Geist Mono', 'SF Mono', 'Cascadia Code', monospace;
-}
+/* editorframe — Dock styles
+ *
+ * All tokens come from theme.css (Layer 2 roles). Literals are forbidden in
+ * this file; if you need a new color/size/duration, add it as a token there
+ * and reference it here as var(--ef-*).
+ */
 
 /* ── root container ─────────────────────────────────── */
 .ef-root {
   display: flex;
   width: 100%; height: 100%;
-  background: var(--c00);
-  color: var(--c11);
-  font-family: var(--sans);
-  font-size: 12px;
+  background: var(--ef-bg-0);
+  color: var(--ef-fg-0);
+  font-family: var(--ef-font-ui);
+  font-size: var(--ef-fs-md);
   overflow: hidden;
 }
 
@@ -42,50 +35,67 @@
 /* ── splitter ───────────────────────────────────────── */
 .ef-splitter {
   flex: 0 0 1px;
-  background: var(--c03);
+  background: var(--ef-border);
   position: relative;
-  z-index: 5;
-  transition: background .12s;
+  z-index: var(--ef-z-sticky);
+  transition: background var(--ef-dur-fast) var(--ef-ease);
 }
 .ef-splitter::after {
   /* widened hit area */
   content: ''; position: absolute;
 }
-.ef-splitter-horizontal {
-  cursor: ew-resize;
-}
-.ef-splitter-horizontal::after {
-  top: 0; bottom: 0; left: -3px; right: -3px;
-}
-.ef-splitter-vertical {
-  cursor: ns-resize;
-}
-.ef-splitter-vertical::after {
-  left: 0; right: 0; top: -3px; bottom: -3px;
-}
+.ef-splitter-horizontal { cursor: ew-resize; }
+.ef-splitter-horizontal::after { top: 0; bottom: 0; left: -3px; right: -3px; }
+.ef-splitter-vertical   { cursor: ns-resize; }
+.ef-splitter-vertical::after { left: 0; right: 0; top: -3px; bottom: -3px; }
 .ef-splitter:hover,
-.ef-splitter-active {
-  background: var(--ac);
-}
+.ef-splitter-active { background: var(--ef-accent); }
 
 /* ── dock (leaf) ────────────────────────────────────── */
 .ef-dock {
   position: relative;
   flex: 1 1 0;
   display: flex;
+  flex-direction: column;
   min-width: 0; min-height: 0;
-  background: var(--c01);
-  border: 1px solid var(--c03);
+  background: var(--ef-bg-1);
+  border: 1px solid var(--ef-border);
   contain: layout style paint;
   overflow: hidden;
 }
+.ef-dock-toolbar-top    { flex-direction: column; }
+.ef-dock-toolbar-bottom { flex-direction: column-reverse; }
+.ef-dock-toolbar-left   { flex-direction: row; }
+.ef-dock-toolbar-right  { flex-direction: row-reverse; }
+
+.ef-dock-focused {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ef-z-dock-overlay);
+  border: 0;
+}
+.ef-dock-collapsed > .ef-dock-content { display: none; }
 .ef-dock-content {
   flex: 1 1 auto;
   min-width: 0; min-height: 0;
   overflow: auto;
   position: relative;
 }
-.ef-dock-dragging { outline: 1px solid var(--ac); outline-offset: -1px; }
+.ef-panel {
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+.ef-panel-error {
+  padding: var(--ef-space-3) var(--ef-space-4);
+  color: var(--ef-error);
+  background: var(--ef-error-bg);
+  border: 1px solid var(--ef-error);
+  border-radius: var(--ef-r-2);
+  margin: var(--ef-space-2);
+  font: var(--ef-fs-md)/var(--ef-lh-tight) var(--ef-font-mono);
+}
+.ef-dock-dragging { outline: 1px solid var(--ef-accent); outline-offset: -1px; }
 
 /* ── corner handles ─────────────────────────────────── */
 .ef-corner {
@@ -93,19 +103,18 @@
   width: 14px; height: 14px;
   z-index: 20;
   opacity: 0;
-  transition: opacity .12s;
+  transition: opacity var(--ef-dur-fast) var(--ef-ease);
 }
-/* Only the corner matching the 3×3 cell under the cursor is visible. */
 .ef-dock-c-tl > .ef-corner-tl,
 .ef-dock-c-tr > .ef-corner-tr,
 .ef-dock-c-bl > .ef-corner-bl,
 .ef-dock-c-br > .ef-corner-br { opacity: 1; }
 .ef-corner::before {
   content: ''; position: absolute; inset: 0;
-  background: var(--c08);
-  transition: background .12s;
+  background: var(--ef-fg-2);
+  transition: background var(--ef-dur-fast) var(--ef-ease);
 }
-.ef-corner:hover::before { background: var(--ac2); }
+.ef-corner:hover::before { background: var(--ef-accent-soft); }
 
 .ef-corner-tl { top: 0;    left: 0;    cursor: nwse-resize; }
 .ef-corner-tl::before { clip-path: polygon(0 0, 100% 0, 0 100%); }
@@ -125,30 +134,30 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-overlay {
   position: fixed;
   pointer-events: none;
-  z-index: 1000;
+  z-index: var(--ef-z-popover);
   display: none;
 }
 .ef-overlay-split {
-  background: rgba(123, 110, 246, 0.07);
-  border: 1px solid rgba(123, 110, 246, 0.45);
+  background: color-mix(in srgb, var(--ef-accent) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ef-accent) 45%, transparent);
 }
 .ef-overlay-merge {
-  background: rgba(123, 110, 246, 0.18);
-  border: 2px solid var(--ac);
+  background: color-mix(in srgb, var(--ef-accent) 18%, transparent);
+  border: 2px solid var(--ef-accent);
 }
 .ef-preview-line-v {
   position: absolute;
   top: 0; bottom: 0; width: 2px;
   margin-left: -1px;
-  background: var(--ac);
-  box-shadow: 0 0 8px rgba(123,110,246,0.7);
+  background: var(--ef-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ef-accent) 70%, transparent);
 }
 .ef-preview-line-h {
   position: absolute;
   left: 0; right: 0; height: 2px;
   margin-top: -1px;
-  background: var(--ac);
-  box-shadow: 0 0 8px rgba(123,110,246,0.7);
+  background: var(--ef-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ef-accent) 70%, transparent);
 }
 .ef-merge-label {
   position: absolute;
@@ -156,8 +165,8 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--c11);
-  font-size: 14px;
+  color: var(--ef-fg-0);
+  font-size: var(--ef-fs-xl);
   font-weight: 500;
   letter-spacing: .04em;
   text-shadow: 0 1px 2px rgba(0,0,0,.5);

@@ -1,0 +1,123 @@
+/* editorframe — UI library: containers */
+
+/* ── section ────────────────────────────────────────────────────── */
+.ef-ui-section {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--ef-border);
+}
+.ef-ui-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ef-space-1);
+  width: 100%;
+  height: var(--ef-size-h-md);
+  padding: 0 var(--ef-space-2);
+  background: var(--ef-bg-1);
+  border: 0;
+  color: var(--ef-fg-0);
+  font: 600 var(--ef-fs-sm) var(--ef-font-ui);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  cursor: pointer;
+  text-align: left;
+}
+.ef-ui-section-head:hover { background: var(--ef-bg-2); }
+.ef-ui-section-arrow {
+  display: inline-block;
+  width: 12px;
+  color: var(--ef-fg-2);
+  font-size: 10px;
+}
+.ef-ui-section-title { flex: 1 1 auto; }
+.ef-ui-section-body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ef-space-2);
+  gap: var(--ef-space-1);
+}
+.ef-ui-section-collapsed .ef-ui-section-body { display: none; }
+
+/* ── propRow ────────────────────────────────────────────────────── */
+.ef-ui-prop-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: var(--ef-space-2);
+  min-height: var(--ef-size-h-md);
+}
+.ef-ui-prop-label {
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-2);
+  text-align: right;
+  user-select: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ef-ui-prop-control { display: flex; min-width: 0; }
+.ef-ui-prop-control > * { flex: 1 1 auto; min-width: 0; }
+
+/* ── card ───────────────────────────────────────────────────────── */
+.ef-ui-card {
+  background: var(--ef-bg-1);
+  border: 1px solid var(--ef-border);
+  border-radius: var(--ef-r-3);
+  display: flex;
+  flex-direction: column;
+}
+.ef-ui-card-head {
+  padding: var(--ef-space-2) var(--ef-space-3);
+  font: 600 var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-0);
+  border-bottom: 1px solid var(--ef-border);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.ef-ui-card-body { display: flex; flex-direction: column; gap: var(--ef-space-2); }
+.ef-ui-card-padded .ef-ui-card-body { padding: var(--ef-space-3); }
+
+/* ── scrollArea ─────────────────────────────────────────────────── */
+.ef-ui-scrollarea {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ef-bg-4) transparent;
+}
+.ef-ui-scrollarea-both { overflow-x: auto; }
+.ef-ui-scrollarea::-webkit-scrollbar { width: 8px; height: 8px; }
+.ef-ui-scrollarea::-webkit-scrollbar-track { background: transparent; }
+.ef-ui-scrollarea::-webkit-scrollbar-thumb {
+  background: var(--ef-bg-4);
+  border-radius: var(--ef-r-pill);
+}
+.ef-ui-scrollarea::-webkit-scrollbar-thumb:hover { background: var(--ef-fg-3); }
+
+/* ── inlineTabs ─────────────────────────────────────────────────── */
+.ef-ui-inline-tabs {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.ef-ui-inline-tabs-head {
+  display: flex;
+  border-bottom: 1px solid var(--ef-border);
+  padding: 0 var(--ef-space-2);
+  gap: 2px;
+}
+.ef-ui-inline-tabs-btn {
+  background: transparent;
+  border: 0;
+  color: var(--ef-fg-2);
+  padding: var(--ef-space-2) var(--ef-space-3);
+  font: var(--ef-fs-md) var(--ef-font-ui);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.ef-ui-inline-tabs-btn:hover { color: var(--ef-fg-0); }
+.ef-ui-inline-tabs-active {
+  color: var(--ef-fg-0);
+  border-bottom-color: var(--ef-accent);
+}
+.ef-ui-inline-tabs-body { padding: var(--ef-space-2) 0; }
