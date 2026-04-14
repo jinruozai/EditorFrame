@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EditorFrame · Blender Dock</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./src/dock.css">
+  <style>
+    html, body { margin: 0; height: 100%; background: #07070a; overflow: hidden; }
+    #app { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Classic <script> tags. Open via file:// — no server needed.
+       Load order: signal → tree → dock. Everything attaches to global EF. -->
+  <script src="./src/signal.js"></script>
+  <script src="./src/tree.js"></script>
+  <script src="./src/dock.js"></script>
+  <script>
+    const { createDockLayout, dock, split } = EF
+
+    const tree = split('vertical', [
+      split('horizontal', [
+        dock({ id: 'sidebar' }),
+        dock({ id: 'editor' }),
+        dock({ id: 'properties' }),
+      ], [0.2, 0.55, 0.25]),
+      split('horizontal', [
+        dock({ id: 'terminal' }),
+        dock({ id: 'problems' }),
+      ], [0.6, 0.4]),
+    ], [0.72, 0.28])
+
+    // The renderPanel below is purely a verification harness for the keyed
+    // reconciliation: each dock gets a text input + a click counter.
+    // Type something and click the button, then split / merge / resize the
+    // dock — your text and your count must survive. If they do, dock DOM and
+    // panel state are being preserved across structural tree changes.
+    createDockLayout(document.getElementById('app'), tree, {
+      renderPanel: function (node) {
+        const wrap = document.createElement('div')
+        wrap.style.cssText = 'padding:16px;font:12px/1.4 system-ui;color:#c4c4cc'
+        wrap.innerHTML =
+          '<div style="margin-bottom:10px;color:#72727c;font-family:monospace">' + node.id + '</div>' +
+          '<input placeholder="type here..." style="width:100%;padding:4px 6px;background:#222226;border:1px solid #2a2a2f;border-radius:3px;color:#e8e8f0;font:inherit;outline:none">' +
+          '<button style="margin-top:8px;padding:4px 10px;background:#2a2a2f;border:1px solid #38383f;border-radius:3px;color:#c4c4cc;font:inherit;cursor:pointer">clicks: 0</button>'
+        const btn = wrap.querySelector('button')
+        let n = 0
+        btn.onclick = function () { n++; btn.textContent = 'clicks: ' + n }
+        return wrap
+      },
+    })
+  </script>
+</body>
+</html>
