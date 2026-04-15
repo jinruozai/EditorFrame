@@ -5,6 +5,7 @@
 //
 // opts:
 //   value    : signal<number[]>     required
+//   onChange?: (v) => void
 //   labels   : string[]             default ['X','Y','Z','W'].slice(0, length)
 //   step?, precision?
 //   linked   : signal<boolean>      optional toggle for proportional editing
@@ -15,6 +16,7 @@
   ui.vectorInput = function (opts) {
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value : [0, 0, 0])
+    const doWrite = ui.writer(sig, o.onChange, 'ui.vectorInput')
     const init = sig.peek()
     const n = init.length
     const labels = o.labels || ['X', 'Y', 'Z', 'W'].slice(0, n)
@@ -48,7 +50,7 @@
         } else {
           next[idx] = v
         }
-        sig.set(next)
+        doWrite(next)
       })
       ui.collect(wrap, stop1)
       ui.collect(wrap, stop2)

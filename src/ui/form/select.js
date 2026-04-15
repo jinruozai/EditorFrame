@@ -1,31 +1,44 @@
 // EF.ui.select — dropdown selector with custom-styled menu (no native <select>).
 //
-// opts: { value: signal<any>, options: [{ value, label, icon? }], placeholder? }
+// opts: {
+//   value: signal<any>, onChange?,
+//   options: [{ value, label, icon? }],
+//   placeholder?: string|signal,
+//   disabled?: bool|signal,
+// }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.select = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value)
+    const sig         = ui.asSig(o.value)
+    const placeholder = ui.asSig(o.placeholder != null ? o.placeholder : 'Select...')
+    const disabled    = ui.asSig(o.disabled    != null ? o.disabled    : false)
+    const doWrite = ui.writer(sig, o.onChange, 'ui.select')
     const el = ui.h('button', 'ef-ui-select', { type: 'button' })
     const labelEl = ui.h('span', 'ef-ui-select-label')
     const arrow = ui.h('span', 'ef-ui-select-arrow', { text: '▾' })
     el.appendChild(labelEl); el.appendChild(arrow)
+    ui.bindAttr(el, disabled, 'disabled')
 
     function findLabel(v) {
       const items = o.options || []
       for (let i = 0; i < items.length; i++) if (items[i].value === v) return items[i].label
       return null
     }
-    ui.bind(el, sig, function (v) {
+    function repaint() {
+      const v = sig.peek()
       const lbl = findLabel(v)
       if (lbl != null) { labelEl.textContent = lbl; labelEl.classList.remove('ef-ui-select-placeholder') }
-      else { labelEl.textContent = o.placeholder || 'Select...'; labelEl.classList.add('ef-ui-select-placeholder') }
-    })
+      else { labelEl.textContent = placeholder.peek() || 'Select...'; labelEl.classList.add('ef-ui-select-placeholder') }
+    }
+    ui.bind(el, sig,         repaint)
+    ui.bind(el, placeholder, repaint)
 
     let pop = null
     el.addEventListener('click', function () {
+      if (disabled.peek()) return
       if (pop) { pop.close(); pop = null; return }
       const list = ui.h('div', 'ef-ui-menu')
       const items = o.options || []
@@ -35,7 +48,7 @@
         if (it.icon) row.appendChild(ui.icon({ glyph: it.icon }))
         const sp = ui.h('span', null, { text: it.label != null ? it.label : String(it.value) })
         row.appendChild(sp)
-        row.addEventListener('click', function () { sig.set(it.value); pop && pop.close(); pop = null })
+        row.addEventListener('click', function () { doWrite(it.value); pop && pop.close(); pop = null })
         list.appendChild(row)
       }
       pop = ui.popover({ anchor: el, content: list, side: 'bottom', align: 'start', onDismiss: function () { pop = null } })

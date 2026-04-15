@@ -1,46 +1,56 @@
-// Global error handling — single source of truth for all framework errors.
+// Global logging + error handling — single source of truth for all framework
+// messages (info/warn/debug/error).
 //
-//   EF.errors          : signal<ErrorEntry[]>
-//   EF.reportError(src, err)
-//   EF.dismissError(id)
-//   EF.clearErrors()
-//   EF.safeCall(src, fn) : runs fn synchronously, routes throws, returns null
+//   EF.logs                    : signal<LogEntry[]>      all levels
+//   EF.errors                  : derived<LogEntry[]>     level === 'error' subset
+//   EF.log(level, source, msg) : push any-level entry
+//   EF.reportError(source, err): convenience for level='error'
+//   EF.dismissLog(id)          : remove one entry
+//   EF.clearLogs()             : clear all
+//   EF.safeCall(source, fn)    : runs fn synchronously, routes throws
 //
-// ErrorEntry = { id, time, source, error, message, stack }
-// source     = { scope: 'widget'|'global'|'bus'|..., dockId?, panelId?, widget?, topic? }
+//   // Back-compat aliases (older code used these):
+//   EF.dismissError = EF.dismissLog
+//   EF.clearErrors  = EF.clearLogs
 //
-// The window 'error' / 'unhandledrejection' listeners are NOT installed here.
-// They live in dock/layout.js and are attached once on the first
-// createDockLayout() call (§ 4.7). This file is pure data; it must not touch
-// window globals so it can be loaded in tests / non-DOM contexts.
+// LogEntry = { id, time, level, source, message, error?, stack? }
+// level    = 'error' | 'warn' | 'info' | 'debug'
+// source   = { scope: 'widget'|'global'|'bus'|..., dockId?, panelId?, widget?, topic? }
+//
+// The window 'error' / 'unhandledrejection' listeners are NOT installed here —
+// they live in dock/layout.js and attach on first createDockLayout() (§ 4.7).
+// This file is pure data and must not touch window globals.
 ;(function (EF) {
   'use strict'
 
-  const errors = EF.signal([])
+  const logs = EF.signal([])
   let _nextId = 1
 
-  function reportError(source, err) {
+  function log(level, source, msg, err) {
     const entry = {
-      id:      'err-' + (_nextId++),
+      id:      'log-' + (_nextId++),
       time:    Date.now(),
+      level:   level || 'info',
       source:  source || { scope: 'unknown' },
-      error:   err,
-      message: (err && err.message) || String(err),
-      stack:   (err && err.stack)   || null,
+      message: msg != null ? String(msg) : ((err && err.message) || ''),
+      error:   err || null,
+      stack:   (err && err.stack) || null,
     }
-    errors.update(function (list) { return list.concat([entry]) })
+    logs.update(function (list) { return list.concat([entry]) })
     return entry
   }
 
-  function dismissError(id) {
-    errors.update(function (list) {
+  function reportError(source, err) {
+    return log('error', source, (err && err.message) || String(err), err)
+  }
+
+  function dismissLog(id) {
+    logs.update(function (list) {
       return list.filter(function (e) { return e.id !== id })
     })
   }
 
-  function clearErrors() {
-    errors.set([])
-  }
+  function clearLogs() { logs.set([]) }
 
   // Synchronous try/catch wrapper. Async errors inside fn (setTimeout,
   // Promises, event handlers attached by fn) are NOT caught — those go
@@ -50,9 +60,21 @@
     catch (e) { reportError(source, e); return null }
   }
 
+  // Derived projection: errors = logs where level === 'error'. Existing
+  // callers that bind to EF.errors keep working with no change.
+  const errors = EF.derived(function () {
+    return logs().filter(function (e) { return e.level === 'error' })
+  })
+
+  EF.logs         = logs
   EF.errors       = errors
+  EF.log          = log
   EF.reportError  = reportError
-  EF.dismissError = dismissError
-  EF.clearErrors  = clearErrors
+  EF.dismissLog   = dismissLog
+  EF.clearLogs    = clearLogs
   EF.safeCall     = safeCall
+
+  // Back-compat aliases.
+  EF.dismissError = dismissLog
+  EF.clearErrors  = clearLogs
 })(window.EF = window.EF || {})

@@ -38,7 +38,7 @@
 //
 // No `highlight` → plain textarea, minimal library default.
 //
-// opts: { value, language?, rows?, highlight? }
+// opts: { value, onChange?, language?, rows?, highlight? }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
@@ -81,6 +81,7 @@
   ui.codeInput = function (opts) {
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value : '')
+    const doWrite = ui.writer(sig, o.onChange, 'ui.codeInput')
     const highlightFn = typeof o.highlight === 'function' ? o.highlight : null
 
     const el = ui.h('div', 'ef-ui-code')
@@ -134,7 +135,7 @@
       refreshHighlight()
     })
     ta.addEventListener('input', function () {
-      sig.set(ta.value)
+      doWrite(ta.value)
       refreshGutter()
       refreshHighlight()
     })
@@ -145,7 +146,7 @@
         const s = ta.selectionStart, n = ta.selectionEnd
         ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(n)
         ta.selectionStart = ta.selectionEnd = s + 2
-        sig.set(ta.value); refreshGutter(); refreshHighlight()
+        doWrite(ta.value); refreshGutter(); refreshHighlight()
       }
     })
     return el

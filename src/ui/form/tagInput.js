@@ -1,24 +1,35 @@
 // EF.ui.tagInput — chip list with add-on-Enter and click-to-remove.
 //
-// opts: { value: signal<string[]>, placeholder? }
+// opts: {
+//   value: signal<string[]>, onChange?,
+//   placeholder?: string|signal,
+//   disabled?: bool|signal,
+// }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.tagInput = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : [])
+    const sig         = ui.asSig(o.value       != null ? o.value       : [])
+    const placeholder = ui.asSig(o.placeholder != null ? o.placeholder : 'Add...')
+    const disabled    = ui.asSig(o.disabled    != null ? o.disabled    : false)
+    const doWrite = ui.writer(sig, o.onChange, 'ui.tagInput')
     const el = ui.h('div', 'ef-ui-field ef-ui-taginput')
     const list = ui.h('div', 'ef-ui-taginput-list')
-    const inp = ui.h('input', 'ef-ui-taginput-input', { type: 'text', placeholder: o.placeholder || 'Add...' })
+    const inp = ui.h('input', 'ef-ui-taginput-input', { type: 'text' })
     el.appendChild(list); el.appendChild(inp)
+    ui.bindAttr(inp, placeholder, 'placeholder')
+    ui.bindAttr(inp, disabled, 'disabled')
+    ui.bind(el, disabled, function (v) { el.classList.toggle('ef-ui-taginput-disabled', !!v) })
 
     function rebuild(arr) {
       list.replaceChildren()
       for (let i = 0; i < arr.length; i++) {
         const idx = i
         const t = ui.tag({ text: arr[idx], onClose: function () {
-          const next = sig.peek().slice(); next.splice(idx, 1); sig.set(next)
+          if (disabled.peek()) return
+          const next = sig.peek().slice(); next.splice(idx, 1); doWrite(next)
         }})
         list.appendChild(t)
       }
@@ -26,14 +37,15 @@
     ui.bind(el, sig, rebuild)
 
     inp.addEventListener('keydown', function (e) {
+      if (disabled.peek()) return
       if (e.key === 'Enter' && inp.value.trim()) {
-        sig.set(sig.peek().concat(inp.value.trim()))
+        doWrite(sig.peek().concat(inp.value.trim()))
         inp.value = ''
       } else if (e.key === 'Backspace' && !inp.value && sig.peek().length) {
-        sig.set(sig.peek().slice(0, -1))
+        doWrite(sig.peek().slice(0, -1))
       }
     })
-    el.addEventListener('click', function () { inp.focus() })
+    el.addEventListener('click', function () { if (!disabled.peek()) inp.focus() })
     return el
   }
 })(window.EF = window.EF || {})

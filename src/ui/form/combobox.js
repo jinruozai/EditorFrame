@@ -1,6 +1,11 @@
 // EF.ui.combobox — text input + filtered dropdown.
 //
-// opts: { value: signal<string>, options: string[] | [{value,label}], placeholder? }
+// opts: {
+//   value: signal<string>, onChange?,
+//   options: string[] | [{value,label}],
+//   placeholder?: string|signal,
+//   disabled?: bool|signal,
+// }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
@@ -14,17 +19,23 @@
 
   ui.combobox = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : '')
+    const sig         = ui.asSig(o.value       != null ? o.value       : '')
+    const placeholder = ui.asSig(o.placeholder != null ? o.placeholder : '')
+    const disabled    = ui.asSig(o.disabled    != null ? o.disabled    : false)
+    const doWrite = ui.writer(sig, o.onChange, 'ui.combobox')
     const items = norm(o.options)
     const wrap = ui.h('div', 'ef-ui-field ef-ui-combobox')
-    const inp = ui.h('input', 'ef-ui-input', { type: 'text', placeholder: o.placeholder || '' })
+    const inp = ui.h('input', 'ef-ui-input', { type: 'text' })
     const arrow = ui.h('span', 'ef-ui-field-suffix', { text: '▾' })
     wrap.appendChild(inp); wrap.appendChild(arrow)
+    ui.bindAttr(inp, placeholder, 'placeholder')
+    ui.bindAttr(inp, disabled, 'disabled')
     ui.bind(wrap, sig, function (v) { if (document.activeElement !== inp) inp.value = v == null ? '' : String(v) })
 
     let pop = null
     function open() {
       if (pop) return
+      if (disabled.peek()) return
       const list = ui.h('div', 'ef-ui-menu')
       const term = inp.value.toLowerCase()
       const filtered = items.filter(function (it) { return !term || String(it.label).toLowerCase().indexOf(term) >= 0 })
@@ -35,7 +46,7 @@
       for (let i = 0; i < filtered.length; i++) {
         const it = filtered[i]
         const row = ui.h('button', 'ef-ui-menu-item', { type: 'button', text: it.label })
-        row.addEventListener('mousedown', function (e) { e.preventDefault(); sig.set(it.value); inp.value = it.value; close() })
+        row.addEventListener('mousedown', function (e) { e.preventDefault(); doWrite(it.value); inp.value = it.value; close() })
         list.appendChild(row)
       }
       list.style.minWidth = wrap.getBoundingClientRect().width + 'px'
@@ -46,7 +57,7 @@
     function reopen() { close(); open() }
 
     inp.addEventListener('focus', open)
-    inp.addEventListener('input', function () { sig.set(inp.value); reopen() })
+    inp.addEventListener('input', function () { doWrite(inp.value); reopen() })
     arrow.addEventListener('mousedown', function (e) { e.preventDefault(); inp.focus(); pop ? close() : open() })
     ui.collect(wrap, close)
 

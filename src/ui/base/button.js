@@ -1,10 +1,10 @@
 // EF.ui.button — text button with optional icon.
 //
 // opts:
-//   text     : string                              required (or icon)
-//   icon     : string (glyph) | HTMLElement
-//   kind     : 'default' | 'primary' | 'ghost' | 'danger'  ('default')
-//   size     : 'sm' | 'md' | 'lg'                          ('md')
+//   text     : string | signal<string>
+//   icon     : string | signal<string> | HTMLElement
+//   kind     : 'default' | 'primary' | 'ghost' | 'danger' | signal  (default)
+//   size     : 'sm' | 'md' | 'lg' | signal                          (md)
 //   disabled : boolean | signal<boolean>
 //   onClick  : (e) => void
 ;(function (EF) {
@@ -13,22 +13,36 @@
 
   ui.button = function (opts) {
     const o = opts || {}
-    const kind = o.kind || 'default'
-    const size = o.size || 'md'
-    const el = ui.h('button', 'ef-ui-btn ef-ui-btn-' + kind + ' ef-ui-btn-' + size, { type: 'button' })
-    if (o.icon) {
-      const ic = (o.icon instanceof HTMLElement) ? o.icon : ui.icon({ glyph: o.icon, size: size })
-      el.appendChild(ic)
+    const text     = ui.asSig(o.text     != null ? o.text     : '')
+    const kind     = ui.asSig(o.kind     != null ? o.kind     : 'default')
+    const size     = ui.asSig(o.size     != null ? o.size     : 'md')
+    const disabled = ui.asSig(o.disabled != null ? o.disabled : false)
+
+    const el = ui.h('button', 'ef-ui-btn', { type: 'button' })
+    ui.bindClass(el, kind, 'ef-ui-btn-')
+    ui.bindClass(el, size, 'ef-ui-btn-')
+    ui.bindAttr(el, disabled, 'disabled')
+
+    // Optional icon slot. Static HTMLElement goes in as-is; a signal or
+    // string drives a managed ui.icon child whose glyph/size track the signals.
+    let iconEl = null
+    if (o.icon instanceof HTMLElement) {
+      iconEl = o.icon
+      el.appendChild(iconEl)
+    } else if (o.icon != null) {
+      iconEl = ui.icon({ glyph: o.icon, size: size })
+      el.appendChild(iconEl)
     }
-    if (o.text) {
-      const sp = ui.h('span', 'ef-ui-btn-text')
-      sp.textContent = o.text
-      el.appendChild(sp)
-    }
-    if (o.disabled != null) {
-      if (ui.isSignal(o.disabled)) ui.bind(el, o.disabled, function (v) { el.disabled = !!v })
-      else el.disabled = !!o.disabled
-    }
+
+    // Text span — always present, hidden when empty so the icon can center.
+    const sp = ui.h('span', 'ef-ui-btn-text')
+    el.appendChild(sp)
+    ui.bind(el, text, function (v) {
+      const s = v == null ? '' : String(v)
+      sp.textContent = s
+      el.classList.toggle('ef-ui-btn-text-empty', s === '')
+    })
+
     if (o.onClick) el.addEventListener('click', function (e) { if (!el.disabled) o.onClick(e) })
     return el
   }

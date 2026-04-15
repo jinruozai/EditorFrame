@@ -71,7 +71,13 @@
     let pop = null
     function close() { if (pop) { pop.close(); pop = null } }
     const list = buildMenu(o.items || [], close)
-    pop = ui.popover({ anchor: o.anchor, content: list, side: o.side || 'bottom', align: o.align || 'start' })
+    pop = ui.popover({
+      anchor:  o.anchor,
+      content: list,
+      side:    o.side  || 'bottom',
+      align:   o.align || 'start',
+      role:    'menu',
+    })
     return pop
   }
 })(window.EF = window.EF || {})

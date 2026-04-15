@@ -636,3 +636,215 @@
   font: var(--ef-fs-md) var(--ef-font-ui);
   padding: 0;
 }
+
+/* ── tab ────────────────────────────────────────────────────────── */
+/* One component, three variants (bar / compact / sidebar). Vertical
+ * and icon-only are independent knobs but sidebar defaults to both. */
+.ef-ui-tab {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+  scrollbar-width: none;
+}
+.ef-ui-tab::-webkit-scrollbar { display: none; }
+.ef-ui-tab-vertical {
+  flex-direction: column;
+  align-items: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.ef-ui-tab-btn {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ef-space-1);
+  padding: 0 var(--ef-space-3);
+  height: var(--ef-tab-h);
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--ef-border);
+  color: var(--ef-fg-2);
+  font: var(--ef-fs-md) var(--ef-font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--ef-dur-fast) var(--ef-ease),
+              color      var(--ef-dur-fast) var(--ef-ease),
+              transform  var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-tab-btn:active { transform: scale(0.96); }
+.ef-ui-tab-btn::after {
+  content: '';
+  position: absolute;
+  left: 50%; right: 50%;
+  bottom: 0;
+  height: 2px;
+  background: var(--ef-accent);
+  border-radius: 1px 1px 0 0;
+  transition: left var(--ef-dur-med) var(--ef-ease),
+              right var(--ef-dur-med) var(--ef-ease),
+              opacity var(--ef-dur-fast) var(--ef-ease);
+  opacity: 0;
+}
+.ef-ui-tab-btn:hover {
+  background: var(--ef-hover);
+  color: var(--ef-fg-0);
+}
+.ef-ui-tab-btn:hover::after { left: 30%; right: 30%; opacity: .5; }
+.ef-ui-tab-btn-active {
+  background: var(--ef-bg-1);
+  color: var(--ef-fg-0);
+}
+.ef-ui-tab-btn-active::after {
+  left: 0; right: 0;
+  opacity: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ef-accent) 60%, transparent);
+}
+.ef-ui-tab-btn-transient .ef-ui-tab-title { font-style: italic; }
+.ef-ui-tab-btn-dirty .ef-ui-tab-title::after {
+  content: ' •';
+  color: var(--ef-accent);
+}
+.ef-ui-tab-btn-dragging { opacity: 0.45; }
+
+/* close × (only visible in .ef-ui-tab-closable) */
+.ef-ui-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  background: transparent;
+  color: var(--ef-fg-3);
+  border-radius: var(--ef-r-1);
+  cursor: pointer;
+  font: var(--ef-fs-xl) var(--ef-font-ui);
+  line-height: 1;
+  padding: 0;
+}
+.ef-ui-tab-close:hover {
+  background: var(--ef-bg-3);
+  color: var(--ef-fg-0);
+}
+/* hover-reveal is the default close behaviour for .bar / dock-standard */
+.ef-ui-tab-closable .ef-ui-tab-btn .ef-ui-tab-close { opacity: 0; }
+.ef-ui-tab-closable .ef-ui-tab-btn:hover .ef-ui-tab-close,
+.ef-ui-tab-closable .ef-ui-tab-btn-active .ef-ui-tab-close { opacity: 1; }
+
+/* badge (notification count etc.) */
+.ef-ui-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  background: var(--ef-error);
+  color: #fff;
+  border-radius: var(--ef-r-pill);
+  font: 600 var(--ef-fs-xs) var(--ef-font-ui);
+  margin-left: 2px;
+}
+
+.ef-ui-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ef-fs-xl);
+  line-height: 1;
+  min-width: 14px;
+}
+
+/* + add button */
+.ef-ui-tab-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ef-tab-h);
+  height: var(--ef-tab-h);
+  border: 0;
+  background: transparent;
+  color: var(--ef-fg-3);
+  cursor: pointer;
+  font: 16px/1 var(--ef-font-ui);
+}
+.ef-ui-tab-add:hover {
+  background: var(--ef-hover);
+  color: var(--ef-fg-0);
+}
+
+/* compact variant — tighter padding, smaller glyph */
+.ef-ui-tab-compact .ef-ui-tab-btn {
+  height: calc(var(--ef-tab-h) - 4px);
+  padding: 0 var(--ef-space-2);
+  font-size: var(--ef-fs-sm);
+}
+
+/* vertical (auto for sidebar) */
+.ef-ui-tab-vertical .ef-ui-tab-btn {
+  border-right: 0;
+  border-bottom: 1px solid var(--ef-border);
+  justify-content: center;
+}
+.ef-ui-tab-vertical .ef-ui-tab-btn::after {
+  left: 0; right: auto;
+  top: 50%; bottom: 50%;
+  width: 2px;
+  height: auto;
+  border-radius: 0 1px 1px 0;
+  transition: top var(--ef-dur-med) var(--ef-ease),
+              bottom var(--ef-dur-med) var(--ef-ease),
+              opacity var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-tab-vertical .ef-ui-tab-btn:hover::after { top: 30%; bottom: 30%; opacity: .5; }
+.ef-ui-tab-vertical .ef-ui-tab-btn-active::after { top: 0; bottom: 0; opacity: 1; }
+
+/* icon-only (auto for sidebar) — 32×32 square */
+.ef-ui-tab-icon-only .ef-ui-tab-btn {
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  gap: 0;
+}
+.ef-ui-tab-icon-only .ef-ui-tab-icon { font-size: 16px; }
+
+/* drop indicator (used by dock panel drag) */
+.ef-ui-tab-drop-indicator {
+  position: absolute;
+  background: var(--ef-accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ef-accent) 70%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-ui-tab-btn,
+  .ef-ui-tab-close,
+  .ef-ui-tab-add { transition: none; }
+}
+
+/* ── tabPanel (tab + body pane composite) ───────────────────────── */
+.ef-ui-tabpanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+.ef-ui-tabpanel-horizontal { flex-direction: column; }
+.ef-ui-tabpanel-vertical   { flex-direction: row; }
+.ef-ui-tabpanel-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}

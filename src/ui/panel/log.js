@@ -1,0 +1,111 @@
+// Log panel widget — built entirely from EF.ui.* primitives.
+//
+// Subscribes to EF.logs and renders one ef-ui-card per entry inside a
+// ef-ui-scrollarea. Click a card to dismiss. Newest on top. A segmented
+// level filter (All / Error / Warn / Info / Debug) controls the visible
+// subset. This is a built-in `registered panel widget` (§ 4.7) — users put
+// it in any dock and they immediately see every panel error / log call /
+// global throw / async rejection routed to one place.
+//
+// Zero custom DOM, zero custom CSS. Everything comes from the ui library.
+;(function (EF) {
+  'use strict'
+  const ui = EF.ui
+
+  const LEVEL_OPTS = [
+    { value: 'all',   label: 'All' },
+    { value: 'error', label: 'Error' },
+    { value: 'warn',  label: 'Warn' },
+    { value: 'info',  label: 'Info' },
+    { value: 'debug', label: 'Debug' },
+  ]
+
+  function create(props, ctx) {
+    const root = ui.h('div', 'ef-ui-errlog')
+
+    // Filter bar — dropdown select on the left, spacer, copy + clear on the
+    // right. Select (not segmented) keeps the toolbar compact when the log
+    // panel is narrow.
+    const filter = EF.signal((props && props.level) || 'all')
+    const bar = ui.h('div', 'ef-ui-errlog-bar')
+    bar.appendChild(ui.select({ value: filter, options: LEVEL_OPTS }))
+    bar.appendChild(ui.h('div', 'ef-ui-errlog-spacer'))
+    const copyBtn = ui.button({ text: 'Copy', kind: 'ghost', size: 'sm' })
+    copyBtn.addEventListener('click', function () {
+      const list = EF.logs()
+      const lvl = filter()
+      const visible = lvl === 'all' ? list : list.filter(function (e) { return e.level === lvl })
+      const text = visible.map(function (e) {
+        return '[' + e.level.toUpperCase() + '] ' + formatSource(e.source) + ' — ' + e.message +
+          (e.stack ? '\n' + e.stack : '')
+      }).join('\n')
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          ui.toast({ kind: 'success', message: 'Copied ' + visible.length + ' log entries' })
+        })
+      }
+    })
+    bar.appendChild(copyBtn)
+    const clearBtn = ui.button({ text: 'Clear', kind: 'ghost', size: 'sm' })
+    clearBtn.addEventListener('click', function () { EF.clearLogs() })
+    bar.appendChild(clearBtn)
+    root.appendChild(bar)
+
+    const empty = ui.h('div', 'ef-ui-errlog-empty', {
+      text: 'No log entries.',
+    })
+
+    const scroll = ui.scrollArea()
+    root.appendChild(scroll)
+
+    ctx.onCleanup(EF.effect(function () {
+      const list = EF.logs()
+      const lvl = filter()
+      const visible = lvl === 'all' ? list : list.filter(function (e) { return e.level === lvl })
+      scroll.replaceChildren()
+      if (visible.length === 0) {
+        scroll.appendChild(empty)
+        return
+      }
+      // Newest first.
+      for (let i = visible.length - 1; i >= 0; i--) {
+        scroll.appendChild(buildRow(visible[i]))
+      }
+    }))
+
+    return root
+  }
+
+  function buildRow(entry) {
+    const lvlEl = ui.h('span', 'ef-ui-errlog-level ef-ui-errlog-level-' + entry.level, { text: entry.level.toUpperCase() })
+    const srcEl = ui.h('span', 'ef-ui-errlog-src', { text: formatSource(entry.source) })
+    const headRow = ui.h('div', 'ef-ui-errlog-head')
+    headRow.appendChild(lvlEl); headRow.appendChild(srcEl)
+    const msgEl = ui.h('div', 'ef-ui-errlog-msg', { text: entry.message })
+    const children = [headRow, msgEl]
+    if (entry.stack) {
+      children.push(ui.h('pre', 'ef-ui-errlog-stk', { text: entry.stack }))
+    }
+    const card = ui.card({ padded: true, children: children })
+    card.classList.add('ef-ui-errlog-row')
+    card.classList.add('ef-ui-errlog-row-' + entry.level)
+    card.title = 'click to dismiss'
+    card.addEventListener('click', function () { EF.dismissLog(entry.id) })
+    return card
+  }
+
+  function formatSource(s) {
+    if (!s) return 'unknown'
+    const parts = [s.scope || 'unknown']
+    if (s.widget)  parts.push('widget=' + s.widget)
+    if (s.dockId)  parts.push('dock=' + s.dockId)
+    if (s.panelId) parts.push('panel=' + s.panelId)
+    if (s.topic)   parts.push('topic=' + s.topic)
+    return parts.join(' · ')
+  }
+
+  EF.registerWidget('log', {
+    defaults: function () { return { title: 'Log', icon: '📋', props: { level: 'all' } } },
+    create: create,
+  })
+})(window.EF = window.EF || {})

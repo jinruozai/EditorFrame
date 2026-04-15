@@ -1,9 +1,17 @@
 // UI library — signal helper.
 //
 // All input widgets in EF.ui take a caller-owned signal as `value`. This file
-// provides three small helpers that every widget reuses:
+// provides four small helpers that every widget reuses:
 //
 //   asSig(v)             → returns v if it's a signal, or wraps a constant
+//   writer(sig, onChange, name)
+//                        → returns the write path for a component. Caller
+//                          contract (§ signal contract C):
+//                            · if `onChange` is a function, use it
+//                            · else if `sig.set` exists, fall back to it
+//                            · else throw at construction
+//                          Runtime write sites call this once and reuse the
+//                          returned function — no per-event typeof checks.
 //   bind(el, sig, fn)    → run fn(value) immediately + every time sig changes;
 //                          auto-cleanup is registered on el.__efCleanups
 //   collect(el, fn)      → push a cleanup callback onto el.__efCleanups
@@ -17,8 +25,12 @@
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
+  // Accepts both plain signals and read-only derived signals — the read
+  // contract is the same (call as fn, has .peek). Writable check (.set) is
+  // only needed by components that default-write into the signal; they can
+  // gate on `typeof v.set === 'function'` where relevant.
   function isSignal(v) {
-    return typeof v === 'function' && typeof v.peek === 'function' && typeof v.set === 'function'
+    return typeof v === 'function' && typeof v.peek === 'function'
   }
   ui.isSignal = isSignal
 
@@ -27,6 +39,18 @@
     return EF.signal(v)
   }
   ui.asSig = asSig
+
+  // Caller contract (§ signal contract C): returns the function a component
+  // should call to write a new value. Throws at construction if no write path
+  // is available — no runtime defensive `typeof .set` checks anywhere.
+  function writer(sig, onChange, name) {
+    if (typeof onChange === 'function') return onChange
+    if (typeof sig === 'function' && typeof sig.set === 'function') {
+      return function (v) { sig.set(v) }
+    }
+    throw new Error((name || 'ui') + ': `value` must be a writable signal or `onChange` is required')
+  }
+  ui.writer = writer
 
   function collect(el, fn) {
     if (!el.__efCleanups) el.__efCleanups = []
@@ -42,6 +66,36 @@
   }
   ui.bind = bind
 
+  // bindText(el, sig) — textContent = String(sig() ?? '')
+  // Used by every component with a text/label display signal.
+  ui.bindText = function (el, sig) {
+    bind(el, sig, function (v) { el.textContent = v == null ? '' : String(v) })
+  }
+
+  // bindClass(el, sig, prefix) — swap `${prefix}${value}` class as sig changes.
+  // For mutually-exclusive variant classes like ef-ui-btn-primary, ef-ui-btn-md.
+  // Strips the previous variant class before adding the new one.
+  ui.bindClass = function (el, sig, prefix) {
+    let prev = ''
+    bind(el, sig, function (v) {
+      if (prev) el.classList.remove(prev)
+      prev = v ? (prefix + v) : ''
+      if (prev) el.classList.add(prev)
+    })
+  }
+
+  // bindAttr(el, sig, name) — reflect sig() onto an attribute / boolean prop.
+  // If `name` is a boolean DOM prop (disabled, checked, open), sets el[name]=!!v.
+  // Otherwise sets/removes the attribute.
+  ui.bindAttr = function (el, sig, name) {
+    const isBoolProp = name === 'disabled' || name === 'checked' || name === 'open' || name === 'readOnly'
+    bind(el, sig, function (v) {
+      if (isBoolProp) { el[name] = !!v }
+      else if (v == null || v === false) el.removeAttribute(name)
+      else el.setAttribute(name, v === true ? '' : String(v))
+    })
+  }
+
   // dispose: run all cleanups in reverse, then detach.
   ui.dispose = function (el) {
     if (!el) return
@@ -56,12 +110,15 @@
   }
 
   // tiny element helper — keeps widget files terse.
+  // No `html:` escape hatch by design: if a widget genuinely needs raw HTML
+  // (only codeInput does, for syntax highlighting), it assigns `.innerHTML`
+  // directly on its own element. That makes the trust boundary visible at
+  // the call site instead of hiding it behind an option name.
   ui.h = function (tag, cls, attrs) {
     const el = document.createElement(tag)
     if (cls) el.className = cls
     if (attrs) for (const k in attrs) {
       if (k === 'text') el.textContent = attrs[k]
-      else if (k === 'html') el.innerHTML = attrs[k]
       else if (k === 'style') el.style.cssText = attrs[k]
       else if (k.charCodeAt(0) === 111 && k.charCodeAt(1) === 110) el[k.toLowerCase()] = attrs[k] // onClick etc.
       else el.setAttribute(k, attrs[k])

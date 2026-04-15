@@ -49,9 +49,17 @@ Layout(Blender 风格的 N 叉分割树)
 
 这些是和用户多次对话后确立的红线,违反会让用户失望。
 
-### 2.1 零内置快捷键
-**框架代码绝对不许 `addEventListener('keydown', ...)`**。
-我们是通用库,不是某个特定的编辑器应用。Focus Mode、关闭 panel、切换 tab、命令面板……所有"可能有快捷键"的功能都只暴露 API(例如 `ctx.dock.toggleFocus()`),由调用方决定怎么绑键。Demo 里可以演示一种绑法,但绝不写进 `src/`。
+### 2.1 零应用级快捷键
+**框架代码绝对不许内置"应用级/业务级"快捷键**。
+我们是通用库,不是某个特定的编辑器应用。Focus Mode、关闭 panel、切换 tab、保存、命令面板、撤销/重做……所有"属于应用决策"的快捷键都**只暴露 API**(例如 `ctx.dock.toggleFocus()`),由调用方决定要不要绑键、绑哪个键。Demo 里可以演示一种绑法,但绝不写进 `src/`。
+
+**但"组件内部语义键"允许,且必须有**——这不是快捷键,是组件自身功能的一部分,删掉组件就废了:
+- **输入/编辑组件的编辑键**:textarea 的 Tab 缩进、codeInput 的 Tab、input 的 Enter 提交等。浏览器默认行为不满足组件语义时,组件必须自己 `preventDefault` + 处理
+- **Overlay 的 dismiss 键**:modal / drawer / popover / menu 按 ESC 关闭最上层(由 `_overlay.js` 统一管,LIFO 栈)
+- **Focus trap 的 Tab 循环**:modal 打开时 Tab 在 modal 内部循环,防止焦点跑到背后不可见元素。这是 WAI-ARIA 对 modal dialog 的硬性要求
+- **进行中的交互的取消键**:拖拽 splitter / 拖 panel 过程中按 ESC 取消本次拖拽
+
+判据很简单:**这个键绑了之后,是在替用户决定应用该怎么响应,还是在完成组件自己必须做的事?** 前者禁止(写 API 让调用方绑),后者允许(组件自己绑)。拿不准就当作前者。
 
 ### 2.2 零构建、零模块系统
 **不许用 ES modules,不许引入打包工具,不许写 `import/export`。**
@@ -120,58 +128,58 @@ editor-frame/
                                    # (npx http-server -p 5570)
 
   src/
-    core/
+    core/                          # ⚠ 原 src/widgets/ 已并入这里(重构后的现状)
       signal.js                    # signal / effect / derived / batch / onCleanup
       errors.js                    # EF.errors signal + reportError + safeCall + 全局 window 兜底
       bus.js                       # EF.bus pub/sub + auto-unsubscribe
-    tree/
-      tree.js                      # 不可变 N 叉树所有纯函数(无 DOM)
-    widgets/                       # ⚠ 这里只有 4 个文件是故意的 —— "panel/toolbar 级 widget"层
       registry.js                  # registerWidget / resolveWidget / widgetDefaults
       context.js                   # WidgetContext 工厂(panel + dock + bus + signals)
-      tab.js                       # 单组件 + 三套预设(tab-standard/compact/collapsible)
-      error-log.js                 # 内置 error-log panel widget
+    tree/
+      tree.js                      # 不可变 N 叉树所有纯函数 + 框架级 transient 预览槽驱逐
     dock/
       runtime.js                   # PanelRuntime 生命周期 + activate + LRU + detached DOM
       render.js                    # reconcile / build / toolbar 两段渲染
       interactions.js              # splitter 拖拽 + 角拖 split/merge + 3×3 hover + panel drag
       migrate.js                   # 跨窗口 BroadcastChannel 协议 + serialize/deserialize
-      layout.js                    # createDockLayout 入口胶水
+      layout.js                    # createDockLayout 入口胶水 + LayoutHandle(含 promotePanel)
     style/
       theme.css                    # 三层 token(原子色 → 角色 → 组件)+ 暗/亮主题
       dock.css / widget.css        # 框架自己的 dock + tab + toolbar 样式
-      ui-base.css                  # 按钮 / 图标按钮 / tooltip / popover / kbd / badge / tag / spinner / divider
-      ui-form.css                  # input / textarea / number / vector / slider / checkbox / switch / radio /
-                                   # segmented / select / menu / combobox / colorInput / enumInput / tagInput
-      ui-editor.css                # gradient / curve / codeInput / pathInput / fileInput
-      ui-container.css             # section / propRow / card / scrollArea / inlineTabs
-      ui-data.css                  # list / tree / table / breadcrumbs / progressBar(全部虚拟化)
-      ui-overlay.css               # menu / modal / drawer / alert / toast
-    ui/                            # ⭐ UI 组件库(EF.ui.* 命名空间)— 50 个文件,按类别分目录
-      _internal/                   # _portal / _floating / _drag / _signal —— 内部辅助,EF.ui 上不导出
-      base/                        # 10 个 — icon button iconButton tooltip popover kbd badge tag spinner divider
-      form/                        # 15 个 — 见 ui-form.css 列表
-      editor/                      # 5 个  — gradientInput curveInput codeInput pathInput fileInput
-      container/                   # 5 个  — section propRow card scrollArea inlineTabs
-      data/                        # 5 个  — list tree table breadcrumbs progressBar
-      overlay/                     # 5 个  — menu modal drawer alert toast
+      ui-base.css / ui-form.css / ui-editor.css / ui-container.css / ui-data.css / ui-overlay.css
+    ui/                            # ⭐ UI 组件库(EF.ui.* 命名空间),按类别分目录
+      _internal/                   # _portal / _floating / _drag / _signal / _overlay
+      base/                        # button / iconButton / icon / tooltip / popover / kbd / badge / tag / spinner / divider
+      form/                        # input / textarea / number / vector / slider / rangeSlider / checkbox / switch / radio /
+                                   # segmented / select / combobox / colorInput / enumInput / tagInput / tab
+      editor/                      # gradientInput / curveInput / codeInput / pathInput / fileInput
+      container/                   # section / propRow / card / scrollArea / tabPanel
+      data/                        # list / tree / table / breadcrumbs / progressBar(全部虚拟化)
+      overlay/                     # menu / modal / drawer / alert / toast
+      panel/                       # 能被 registerWidget 注册的 "panel 级" 内置 widget
+                                   # dock-tabs(tab-standard/compact/collapsible 三套预设) / log(error-log)
 
-  demo/
-    widgets/
-      ui-showcase.js               # 'ui-showcase' panel widget — 7 分类 segmented 切换:
-                                   # Buttons / Inputs / Editor / Containers / Tabs / Data / Overlay
-      theme-config.js              # 'theme-config' panel widget — 6 个 tab 实时改主题 token,
-                                   # localStorage 持久化 ('ef-theme-overrides' + 'ef-theme-mode')
-      demo.css                     # 上面两个 demo widget 的额外样式 + .demo-mock-tabs 等
+  demo/                            # ⚠ 上一个 Claude 做了一次重构:单文件 ui-showcase.js 拆成 4 份
+    catalog.js                     # 全部组件的 catalog(signals / mount / editFor)数据
+    state.js                       # window.Demo 命名空间(selected / select / openCategory / signal cache)
+    widgets/                       # 5 个 panel widget,全都走 registerWidget
+      component-tree.js            # 左侧面板:按 category 分组的平铺树,单击 preview / 双击 permanent
+      component-search.js          # 搜索面板:list 过滤,onSelect=preview onActivate=permanent
+      showcase.js                  # 'showcase-<cat>' 6 个,按分类渲染 ui.card 网格 + 点击同步 Demo.selected
+      property-panel.js            # 右侧面板:订阅 Demo.selected 构造编辑表单
+      theme-config.js              # 实时改主题 token + 亮暗模式切换,localStorage 持久化
+      demo.css                     # 以上 5 个 widget 的额外样式
 ```
 
 **关键提示给下一个会话的 Claude**:
-- `src/widgets/` **故意只有 4 个文件**。"UI 组件库"在 `src/ui/`,不是 `src/widgets/`。这两层是分开的:
-  - `src/widgets/` = 能被 `EF.registerWidget` 注册、能放进 dock 的 panel/toolbar 级 widget
-  - `src/ui/` = `EF.ui.button` / `EF.ui.input` 这种通用 UI 元件,被上面的 panel widget 拼装使用
+- **目录分层**(重构后):
+  - `src/core/` = 零依赖底层 + 注册表 + context 工厂(原 `src/widgets/` 的 registry/context 已并入这里)
+  - `src/ui/` = `EF.ui.*` 通用 UI 元件库(50+ 个)
+  - `src/ui/panel/` = 内置 panel 级 widget(dock-tabs / log),用 `registerWidget` 注册,能直接塞进 dock
+  - `demo/` = 用户层 demo,catalog+state 负责数据,widgets/ 负责 5 个面板
 - 改完 `src/` 下任何文件**必须** `node tools/build.mjs` 重新生成 `dist/ef.{js,css}`,index.html 是直接引用 dist 的,不重建就看不到改动
+- **`demo/` 下的文件不进 bundle** —— index.html 直接 `<script>` 加载 demo/*.js,改完 reload 即可
 - 写 dev server 时用 `.claude/launch.json` 已配好的 `ef-demo`(端口 5570),不要自己拉新端口
-- 文件加载顺序看 `tools/build.mjs` 的 `JS_ORDER` / `CSS_ORDER` 数组,**那是依赖序的唯一权威**(index.html 不再列单独的 `<script>`)
+- 文件加载顺序看 `tools/build.mjs` 的 `JS_ORDER` / `CSS_ORDER` 数组,**那是依赖序的唯一权威**
 
 ### 3.2 已实现的能力(完整清单)
 
@@ -220,11 +228,13 @@ editor-frame/
 ### 3.3 已知坑(给下一个 Claude 的避雷指南)
 
 1. **`ui.bind(el, sig, fn)` 会同步触发一次 fn**。任何在 `fn` 里访问的变量必须在 `bind` 之前已经声明并初始化,否则 TDZ 报错。`demo/widgets/theme-config.js` 修过这个坑(`allSigs` / `refreshAll` 必须在 `ui.bind(modeSel, ...)` 之前定义)。
-2. **不要在 widget `create()` 里调 `ctx.panel.updateProps()` 高频化**(§ 4.9 已警告)。它写回 tree 触发 reconcile,keystroke 级别会卡。
-3. **改了 `src/` 没 rebuild = 看不到改动**。每次都跑 `node tools/build.mjs`(或 `--watch`)。
-4. **`registerWidget` 重名 throw**。同一个 widget 不能注册两次,reload 时如果 demo widget 文件被加载两次会炸。`index.html` 里 demo widget 用 `<script>` 标签,默认不会重复。
-5. **dist/ef.{js,css} 是已 commit 的产物**。改了源码之后 commit 时记得把 dist 一起 commit,否则克隆出去的人看不到效果。
-6. **focus mode 有 CSS containing block 限制**(§ 4.5 已记录)。EF root 的祖先不能有 `transform/filter/perspective/will-change`。
+2. **`EF.effect(() => ...)` 也是同步触发**。如果 effect 体里向 `documentElement.style` 写 inline CSS variable,初次挂载那一刻就会把当前 signal 值写成 inline 样式,**inline specificity 会覆盖 `[data-ef-theme="light"]` 之类的属性选择器,主题切换从此失效**。修复模板:在 effect 里读 `getComputedStyle` 的 effective value,和想写的 literal 比较,相同就 return 跳过写入 —— 初次挂载零污染,只有用户真的编辑才写 inline。详见 `demo/widgets/theme-config.js` 的 `bindWriter`。
+3. **不要在 widget `create()` 里调 `ctx.panel.updateProps()` 高频化**(§ 4.9 已警告)。它写回 tree 触发 reconcile,keystroke 级别会卡。
+4. **改了 `src/` 没 rebuild = 看不到改动**。每次都跑 `node tools/build.mjs`(或 `--watch`)。**改 `demo/` 不用 rebuild**,demo 是 `<script>` 直挂的,reload 即可。
+5. **`registerWidget` 重名 throw**。同一个 widget 不能注册两次,reload 时如果 demo widget 文件被加载两次会炸。`index.html` 里 demo widget 用 `<script>` 标签,默认不会重复。
+6. **dist/ef.{js,css} 是已 commit 的产物**。改了源码之后 commit 时记得把 dist 一起 commit,否则克隆出去的人看不到效果。
+7. **focus mode 有 CSS containing block 限制**(§ 4.5 已记录)。EF root 的祖先不能有 `transform/filter/perspective/will-change`。
+8. **`addPanel(..., { transient: true })` 自动驱逐同 dock 已有 transient**(§ 4.4 框架级预览槽语义,2026-04-15 落地)。调用方不用自己写"找到现有 transient 再删"的胶水 —— tree 层已经做了。`LayoutHandle.promotePanel(panelId)` 负责"单击→preview / 双击→固定"的升级路径。
 
 ---
 
@@ -946,24 +956,50 @@ editorframe/
 
 ---
 
-## 8. 当前会话状态(2026-04-15)
+## 8. 当前会话状态(2026-04-15 晚,下班前)
 
-> 用户在家里做完一轮工作,明天去公司换电脑继续。这一节让公司的 Claude 一打开就能"接着干",不必再问"现在到哪了"。
+> 用户今晚下班,回家接着写。这一节让回家的 Claude 一打开就能"接着干"。
 
-**已完成的工作**:
-- § 6 的 Phase 1~7 全部一次性整体落地(详见 § 3 的 3.1 / 3.2)
-- 框架核心 + UI 组件库(50 个 EF.ui.* 组件)+ demo widget(ui-showcase + theme-config)+ build 脚本(`tools/build.mjs`)+ dist bundle 全部已 commit
-- **2026-04-15 这一轮专门的工作**:
-  1. 修了 `demo/widgets/theme-config.js` 的 TDZ bug(`allSigs` / `refreshAll` 必须在 `ui.bind(modeSel, ...)` 之前定义,因为 ui.bind 同步触发一次 fn)
-  2. 大幅精修 UI/UX 微交互:见 § 3.2 "UX 微交互" 一段(按钮、表单、overlay、tab 全部加了 spring 动画 + glow 焦点环 + click flash)
-  3. 在 `demo/widgets/ui-showcase.js` 加了 'tabs' 分类,展示三种内置 dock tab 样式的 mock 版本
-  4. 完善了本文件的 § 3 / § 6 / § 8 让交接零摩擦
+**这一轮(下班前最后一次 push 之前)已完成的工作**:
 
-**下一步给公司 Claude 的提示**:
-- **进项目第一件事**:`node tools/build.mjs --watch` 起 build watcher,然后用 `.claude/launch.json` 的 `ef-demo` 启 dev server(端口 5570)
-- 公司机器上如果没装 node,任何 `dist/ef.{js,css}` 已经在 git 里,直接 `file://` 双击 `index.html` 也能跑
-- 写 src 改动之后**必须 rebuild**,不要忘
-- 用户可能给出新需求(继续打磨 demo / 加新 widget / 改交互),按 § 2.3 的 design-first 流程走 —— 先口头列计划等用户回 "开始" 再动代码,**除非是已确认范围内的小修小补**(用户已经反馈过"不要每次小事都问")
-- 在 § 3.3 的"已知坑"列表上补充任何新踩到的坑
+1. **Demo 目录重构已落地**(这是更早就做过的 —— 见 § 3.1):单文件 `ui-showcase.js` 拆成 `demo/catalog.js`(数据)+ `demo/state.js`(Demo 命名空间)+ `demo/widgets/{component-tree,component-search,showcase,property-panel,theme-config}.js` 五张 panel。所有 panel widget 都走 `registerWidget`,左侧面板单击 preview / 双击 permanent,右侧 property panel 订阅 `Demo.selected`。
+2. **`src/widgets/` 整个目录并入 `src/core/`**:registry.js 和 context.js 跟 signal / errors / bus 一起住在 core;原本的 `tab.js` / `error-log.js` 换成 `src/ui/panel/{dock-tabs, log}.js`。目录分层见 § 3.1 最新版。
+3. **修了 sidebar dock toolbar 方向**:从 `'right'` 改回 `'left'`(用户自己纠正的)。
+4. **修了 log panel 顶栏 Copy/Clear 不可见**:根因是 `.ef-ui-select { width: 100% }` 覆盖了 flex 约束。在 `ui-data.css` 里给 `.ef-ui-errlog-bar .ef-ui-select` 显式设 `flex: 0 0 96px; width: 96px`。
+5. **修了下 dock 不能折叠**:给 bottom dock 的 tab-standard 加 `collapsible: true`,点 active tab 就能折叠,发现性提升。
+6. **VSCode 风格单击 preview / 双击 permanent 的预览槽语义,从 demo 提到框架层**(这是用户重点纠正的 —— "ui 库不天然支持这个吗? demo 里不该写一堆"):
+   - `src/tree/tree.js` 的 `addPanel(tree, dockId, partial, { transient: true })` 现在会**先过滤掉同 dock 已有的 transient panel**,再把新的插进去。纯函数层直接保证"一个 dock 最多一个预览槽"。
+   - `src/dock/layout.js` 的 `LayoutHandle` 新增 `promotePanel(panelId)` 便利方法。
+   - `demo/state.js` 的 `openCategory` 从 ~25 行手写驱逐逻辑缩成"命中 → promote/activate;未命中 → addPanel(transient)"。
+   - 四步序列(preview form → preview editor → permanent overlay → preview data)实测 panel 列表变化符合语义。
+7. **修了 Light 主题切换只翻转部分文字的 bug**(用户反馈"只有一部分 ui 的文字变暗了,其他主色调还是 dark"):
+   - 根因:`demo/widgets/theme-config.js` 的 palette effect 里 `EF.effect(() => writeToken(...))` 是**同步首次触发**,挂载 Palette 标签页那一刻就把所有 primitive 作为 inline style 写到 `:root` —— inline specificity 覆盖了 `[data-ef-theme="light"]` 属性选择器。
+   - 修复模板:新的 `bindWriter(sig, name, format)` 包装器,effect 体里先读 `getComputedStyle` 的 effective value,和想写的 literal 比较,**相同就 return**,初次挂载零污染。只有用户真编辑才写 inline。
+   - `refreshAll()` 在重新读 cascade 前先 `removeProperty` 清掉所有 tracked inline override。
+   - 切 mode 触发新的 `clearAllOverrides()` —— 同时清 `localStorage` 和 inline 样式,避免 dark 调参带到 light 变花。
+   - 实测 Dark↔Light 往返,`--ef-c-00` 正确翻转,`inlineTokenCount === 0`。
+   - 这条经验已经写进 § 3.3 的"已知坑 #2"(effect 同步首次触发的 inline 污染模板)。
+8. **Demo 手写元素换成 ui.* 组件**(用户要求"除 panel 外都用 ui 库"):
+   - `demo/widgets/showcase.js`:每张卡从 `ui.h('div', 'demo-card')` 改成 `ui.card({ title: entry.name, padded: false })`,stage 丢进 `card.body`。`data-demo-id` / click / active/pulse class 都在 ui.card 元素上。
+   - `demo/widgets/property-panel.js`:分类 chip 从 `ui.h('div', 'demo-prop-cat')` 换成 `ui.tag({ text: entry.category })`。
+   - `demo/widgets/demo.css`:下线 `.demo-card*` 基础样式(由 `.ef-ui-card` 提供),保留 `.demo-card-stage` 和 active/pulse 装饰;新增 `.demo-showcase-card > .ef-ui-card-head` 覆盖把 ui.card 默认 uppercase 头去掉(50+ 卡片密排更耐看);`.demo-prop-cat` 删,换 `.demo-prop-tags` flex 容器。
+   - `demo/state.js` 的 scroll pulse class 名同步改为 `demo-showcase-card-pulse`。
 
-**Gitee 远程**:`https://gitee.com/lazygoo/editor-frame.git`,公司机器 `git pull` 即可拿到最新。
+**目前进行到哪(下一步继续的地方)**:
+
+用户刚发现 **showcase 卡片尺寸不适配**(截图里 `curveInput` 撑高了整行,隔壁卡片产生大量留白,视觉上像"溢出"):
+
+- 根因:`.demo-showcase-body` 用 `grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))` 强制所有卡片同宽,grid 行高按行内最高那张卡对齐。`demo/catalog.js:468` 的 curveInput 又写死 `width:220px;height:160px`,加上 presets 按钮栏,总高超过 gradient/code/path,所在行被它撑高。
+- 已给用户三条方案(A/B/C),推荐 **A+B 组合**(纯 demo 层改动):
+  - A:`.demo-showcase-body` 从 grid 改 `flex-wrap: wrap; align-items: flex-start`,卡片按内容宽高自然排(Blender 风格本就该参差)
+  - B:大组件(curve/code/gradient/fileInput)在 catalog 里标 `stageSize: 'lg'` 或给 `.demo-showcase-card-wide` 类,CSS 里给更宽的 flex-basis
+  - C(不推荐):动 ui 库 curveInput 自适应,违反 § 2.6
+- **等用户回家回复"选 A+B"或其他方向再动代码**。当前 commit 不包含这一块修复。
+
+**下一步给回家的 Claude 的提示**:
+- **第一件事**:`git pull` 拿下班前这一轮 commit
+- 然后 `node tools/build.mjs --watch` + `.claude/launch.json` 的 `ef-demo`(端口 5570)
+- 用户可能直接说"开始 A+B"或给别的方向,按 § 2.3 design-first 流程处理
+- 任何新踩的坑都补到 § 3.3
+
+**Gitee 远程**:`https://gitee.com/lazygoo/editor-frame.git`。

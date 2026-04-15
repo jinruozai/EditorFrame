@@ -122,12 +122,45 @@
     create: function (props, ctx) {
       const root = ui.h('div', 'demo-theme')
 
-      // signal map so refreshAll can re-pull from CSS after Reset/Mode change.
+      // Signal map so refreshAll can re-pull from CSS after Reset/Mode change.
       // Hoisted to the top of create() because ui.bind() fires its callback
       // synchronously on first call — anything it touches must already exist.
+      //
+      // IMPORTANT: the write-effect below is guarded by an "inline cascade
+      // match" check. Without that, every EF.effect runs synchronously on
+      // creation and writes the current cascade value back as an inline
+      // style on :root — locking Layer 1 primitives so that switching to
+      // light mode later has no visual effect (inline specificity beats
+      // [data-ef-theme="light"]). The guard means: only writeToken when
+      // the signal's desired literal differs from what the cascade already
+      // resolves to, so initial mount is a no-op and only user edits pollute
+      // inline styles.
       const allSigs = []
-      function track(sig, name, parse) { allSigs.push({ sig: sig, name: name, parse: parse }) }
+      function track(sig, name, parse, format) {
+        allSigs.push({ sig: sig, name: name, parse: parse, format: format })
+      }
+      function bindWriter(sig, name, format) {
+        EF.effect(function () {
+          const v = sig()
+          const literal = format ? format(v) : v
+          // getPropertyValue on documentElement.style returns the INLINE value
+          // only ('' if not set). getComputedStyle returns the EFFECTIVE value
+          // (inline ?? cascade). We compare against effective: if the effective
+          // already matches, writing would be a no-op at best and pollution at
+          // worst — skip it.
+          const effective = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+          if (effective === literal) return
+          writeToken(name, literal)
+        })
+      }
       function refreshAll() {
+        // Remove every tracked inline override first so getComputedStyle
+        // resolves from the cascade (reflecting the current theme mode).
+        // Then set each signal to the cascade value; bindWriter's guard
+        // skips the write because effective === literal.
+        for (let i = 0; i < allSigs.length; i++) {
+          document.documentElement.style.removeProperty(allSigs[i].name)
+        }
         for (let i = 0; i < allSigs.length; i++) {
           const it = allSigs[i]
           const v = readToken(it.name)
@@ -136,8 +169,24 @@
         }
       }
 
-      // Header — preset / reset / export
+      // Single header row — tab bar on the left, mode/reset/export on the
+      // right. Per user feedback: palette/spacing/sizing tabs and the
+      // dark/light/reset/export controls must share the same row.
       const head = ui.h('div', 'demo-theme-head')
+      const tabSig = EF.signal('palette')
+      const tabBar = ui.segmented({
+        value: tabSig,
+        options: [
+          { value: 'palette',    label: 'Palette' },
+          { value: 'spacing',    label: 'Spacing' },
+          { value: 'sizing',     label: 'Sizing' },
+          { value: 'radius',     label: 'Radius' },
+          { value: 'typography', label: 'Typography' },
+          { value: 'motion',     label: 'Motion' },
+        ],
+      })
+      tabBar.classList.add('demo-theme-tabbar')
+
       const modeSig = EF.signal(localStorage.getItem(THEME_KEY) || 'dark')
       const modeSel = ui.select({
         value: modeSig,
@@ -146,20 +195,33 @@
           { value: 'light', label: 'Light' },
         ],
       })
-      ui.bind(modeSel, modeSig, function (v) { applyThemeMode(v); refreshAll() })
+      // On mode flip we wipe persisted token overrides too. Rationale:
+      // customizations are stored as inline styles with Dark-mode-derived
+      // values; carrying them across to Light makes the UI look broken
+      // (e.g. a user-tweaked "deep gray 02" bleeds into a light background).
+      // For a demo this is the sane default — the user re-customizes in the
+      // new mode if they want to. (Reset button reuses the same pipeline.)
+      function clearAllOverrides() {
+        const o = readPersisted()
+        for (const k in o) document.documentElement.style.removeProperty(k)
+        localStorage.removeItem(STORAGE_KEY)
+      }
+      ui.bind(modeSel, modeSig, function (v) {
+        applyThemeMode(v)
+        clearAllOverrides()
+        refreshAll()
+      })
 
       const resetBtn = ui.button({
-        text: 'Reset', kind: 'ghost',
+        text: 'Reset', kind: 'ghost', size: 'sm',
         onClick: function () {
-          const o = readPersisted()
-          for (const k in o) document.documentElement.style.removeProperty(k)
-          localStorage.removeItem(STORAGE_KEY)
+          clearAllOverrides()
           ui.toast({ kind: 'success', message: 'Theme reset' })
           refreshAll()
         },
       })
       const exportBtn = ui.button({
-        text: 'Export', kind: 'ghost',
+        text: 'Export', kind: 'ghost', size: 'sm',
         onClick: function () {
           const o = readPersisted()
           const lines = [':root {']
@@ -171,22 +233,25 @@
         },
       })
 
+      const spacer = ui.h('div', 'demo-theme-spacer')
+      head.appendChild(tabBar)
+      head.appendChild(spacer)
       head.appendChild(modeSel)
       head.appendChild(resetBtn)
       head.appendChild(exportBtn)
       root.appendChild(head)
 
-      // Tabbed body — built once, kept mounted; we just track which is shown.
-      const tabSig = EF.signal('palette')
-
       // ── builders for each category ─────────────────────────────
+      const pxFormat = function (v) { return v + 'px' }
+      const msFormat = function (v) { return v + 'ms' }
+
       function buildPalette() {
         const wrap = ui.h('div', 'demo-theme-pane')
         for (let i = 0; i < PALETTE.length; i++) {
           const name = PALETTE[i][0], label = PALETTE[i][1]
           const sig = EF.signal(readToken(name) || '#000000')
-          track(sig, name, null)
-          EF.effect(function () { writeToken(name, sig()) })
+          track(sig, name, null, null)
+          bindWriter(sig, name, null)
           wrap.appendChild(ui.propRow({ label: label, control: ui.colorInput({ value: sig }) }))
         }
         return wrap
@@ -197,8 +262,8 @@
           const row = catalog[i]
           const name = row[0], label = row[1], min = row[2], max = row[3]
           const sig = EF.signal(pxNum(readToken(name)))
-          track(sig, name, pxNum)
-          EF.effect(function () { writeToken(name, sig() + 'px') })
+          track(sig, name, pxNum, pxFormat)
+          bindWriter(sig, name, pxFormat)
           wrap.appendChild(ui.propRow({ label: label, control: ui.numberInput({ value: sig, min: min, max: max, step: 1, suffix: 'px' }) }))
         }
         return wrap
@@ -209,8 +274,8 @@
           const r = MOTION_MS[i]
           const name = r[0], label = r[1], min = r[2], max = r[3]
           const sig = EF.signal(pxNum(readToken(name)))
-          track(sig, name, pxNum)
-          EF.effect(function () { writeToken(name, sig() + 'ms') })
+          track(sig, name, pxNum, msFormat)
+          bindWriter(sig, name, msFormat)
           wrap.appendChild(ui.propRow({ label: label, control: ui.numberInput({ value: sig, min: min, max: max, step: 10, suffix: 'ms' }) }))
         }
         return wrap
@@ -219,13 +284,13 @@
         const wrap = ui.h('div', 'demo-theme-pane')
         // Font stacks are free-text inputs.
         const uiFontSig = EF.signal(readToken('--ef-font-ui'))
-        track(uiFontSig, '--ef-font-ui', null)
-        EF.effect(function () { writeToken('--ef-font-ui', uiFontSig()) })
+        track(uiFontSig, '--ef-font-ui', null, null)
+        bindWriter(uiFontSig, '--ef-font-ui', null)
         wrap.appendChild(ui.propRow({ label: 'UI font', control: ui.input({ value: uiFontSig }) }))
 
         const monoFontSig = EF.signal(readToken('--ef-font-mono'))
-        track(monoFontSig, '--ef-font-mono', null)
-        EF.effect(function () { writeToken('--ef-font-mono', monoFontSig()) })
+        track(monoFontSig, '--ef-font-mono', null, null)
+        bindWriter(monoFontSig, '--ef-font-mono', null)
         wrap.appendChild(ui.propRow({ label: 'Mono font', control: ui.input({ value: monoFontSig }) }))
 
         // Then the size scale
@@ -254,21 +319,6 @@
         panes[key] = el
         return el
       }
-
-      const tabBar = ui.segmented({
-        value: tabSig,
-        options: [
-          { value: 'palette',    label: 'Palette' },
-          { value: 'spacing',    label: 'Spacing' },
-          { value: 'sizing',     label: 'Sizing' },
-          { value: 'radius',     label: 'Radius' },
-          { value: 'typography', label: 'Typography' },
-          { value: 'motion',     label: 'Motion' },
-        ],
-      })
-      const tabBarWrap = ui.h('div', 'demo-theme-tabs')
-      tabBarWrap.appendChild(tabBar)
-      root.appendChild(tabBarWrap)
 
       const paneHost = ui.h('div', 'demo-theme-host')
       const scroll = ui.scrollArea({ children: paneHost })

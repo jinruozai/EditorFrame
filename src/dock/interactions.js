@@ -293,7 +293,10 @@
 
       // Is the pointer inside a tab bar? If yes, compute an insertion index
       // and paint a drop indicator between the two nearest tab buttons.
-      const tabsEl = el.closest('.ef-tabs')
+      // `.ef-dock-tabs` is the marker class added by the dock-tabs thin
+      // shell; it sits next to `.ef-ui-tab` (the visual styling), so any
+      // tab strip the dock rendered matches both.
+      const tabsEl = el.closest('.ef-dock-tabs')
       if (tabsEl && dockEl.contains(tabsEl)) {
         const idx = computeTabInsertionIndex(tabsEl, ev.clientX, ev.clientY, panelId)
         dropDockId = dstId
@@ -374,11 +377,11 @@
   // exactly what EF.movePanel's dstIndex means, so no further adjustment
   // is needed at the call site.
   function computeTabInsertionIndex(tabsEl, clientX, clientY, draggingPanelId) {
-    const vertical = tabsEl.classList.contains('ef-tabs-vertical')
-    const tabs = tabsEl.querySelectorAll(':scope > .ef-tab')
+    const vertical = tabsEl.classList.contains('ef-ui-tab-vertical')
+    const tabs = tabsEl.querySelectorAll(':scope > .ef-ui-tab-btn')
     let idx = 0
     for (let i = 0; i < tabs.length; i++) {
-      if (tabs[i].dataset.panelId === draggingPanelId) continue
+      if (tabs[i].dataset.tabId === draggingPanelId) continue
       const r = tabs[i].getBoundingClientRect()
       const mid = vertical ? (r.top + r.bottom) / 2 : (r.left + r.right) / 2
       const pos = vertical ? clientY : clientX
@@ -392,10 +395,10 @@
   // strip) to visualise the insertion slot. Positioned absolutely inside
   // the tabs element (which is position:relative per widget.css).
   function makeDropIndicator(tabsEl, index) {
-    const vertical = tabsEl.classList.contains('ef-tabs-vertical')
+    const vertical = tabsEl.classList.contains('ef-ui-tab-vertical')
     const ind = document.createElement('div')
-    ind.className = 'ef-tab-drop-indicator'
-    const tabs = tabsEl.querySelectorAll(':scope > .ef-tab')
+    ind.className = 'ef-ui-tab-drop-indicator'
+    const tabs = tabsEl.querySelectorAll(':scope > .ef-ui-tab-btn')
     const barRect = tabsEl.getBoundingClientRect()
 
     let edge

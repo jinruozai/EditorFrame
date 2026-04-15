@@ -10,51 +10,70 @@
 //   • ↑ / ↓ keys adjust by `step` while editing (and without scrubbing).
 //   • ‹ / › buttons nudge by `step`.
 //
-// opts: { value: signal<number>, min?, max?, step?, precision?, suffix?, label? }
+// opts: {
+//   value: number|signal, onChange?,
+//   min?: number|signal, max?: number|signal, step?: number|signal,
+//   precision?: number|signal,
+//   suffix?: string|signal, label?: string|signal,
+// }
+//
+// Note: min/max/step are live signals — changing them at runtime re-clamps
+// the displayed value and re-quantizes future scrub/nudge sessions.
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.numberInput = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : 0)
-    const min = o.min != null ? o.min : -Infinity
-    const max = o.max != null ? o.max :  Infinity
-    const step = o.step != null ? o.step : 1
-    const prec = o.precision != null ? o.precision : (step >= 1 ? 0 : 3)
+    const sig    = ui.asSig(o.value     != null ? o.value     : 0)
+    const minS   = ui.asSig(o.min       != null ? o.min       : -Infinity)
+    const maxS   = ui.asSig(o.max       != null ? o.max       :  Infinity)
+    const stepS  = ui.asSig(o.step      != null ? o.step      : 1)
+    const precS  = ui.asSig(o.precision != null ? o.precision : null)  // null = derive
+    const label  = ui.asSig(o.label     != null ? o.label     : '')
+    const suffix = ui.asSig(o.suffix    != null ? o.suffix    : '')
+    const doWrite = ui.writer(sig, o.onChange, 'ui.numberInput')
 
-    const el = ui.h('div', 'ef-ui-num')
-    if (o.label != null) {
-      const lab = ui.h('span', 'ef-ui-num-label', { text: o.label })
-      el.appendChild(lab)
-    }
+    const el  = ui.h('div', 'ef-ui-num')
+    const lab = ui.h('span', 'ef-ui-num-label')
     const dec = ui.h('button', 'ef-ui-num-step ef-ui-num-step-l', { type: 'button', text: '‹' })
     const txt = ui.h('input', 'ef-ui-num-text', { type: 'text' })
     const inc = ui.h('button', 'ef-ui-num-step ef-ui-num-step-r', { type: 'button', text: '›' })
+    const sfx = ui.h('span', 'ef-ui-num-suffix')
     txt.readOnly = true
-    el.appendChild(dec); el.appendChild(txt); el.appendChild(inc)
-    if (o.suffix) {
-      const sfx = ui.h('span', 'ef-ui-num-suffix', { text: o.suffix })
-      el.appendChild(sfx)
-    }
+    el.appendChild(lab); el.appendChild(dec); el.appendChild(txt); el.appendChild(inc); el.appendChild(sfx)
 
-    function clamp(v) { return Math.max(min, Math.min(max, v)) }
-    function fmt(v)   { return Number(v).toFixed(prec) }
+    ui.bindText(lab, label)
+    ui.bind(el, label,  function (v) { lab.style.display = (v == null || v === '') ? 'none' : '' })
+    ui.bindText(sfx, suffix)
+    ui.bind(el, suffix, function (v) { sfx.style.display = (v == null || v === '') ? 'none' : '' })
+
+    function prec() {
+      const p = precS.peek()
+      if (p != null) return p
+      return stepS.peek() >= 1 ? 0 : 3
+    }
+    function clamp(v) { return Math.max(minS.peek(), Math.min(maxS.peek(), v)) }
+    function fmt(v)   { return Number(v).toFixed(prec()) }
     function commit(v) {
       const n = clamp(Number(v))
       if (!Number.isFinite(n)) return
-      sig.set(Number(fmt(n)))
+      doWrite(Number(fmt(n)))
     }
 
     let editing = false
-    ui.bind(el, sig, function (v) { if (!editing) txt.value = fmt(v) })
+    // Re-render when value OR min/max/step/precision changes.
+    ui.bind(el, sig,   function ()  { if (!editing) txt.value = fmt(sig.peek()) })
+    ui.bind(el, minS,  function ()  { if (!editing) { const c = clamp(sig.peek()); if (c !== sig.peek()) doWrite(c); else txt.value = fmt(sig.peek()) } })
+    ui.bind(el, maxS,  function ()  { if (!editing) { const c = clamp(sig.peek()); if (c !== sig.peek()) doWrite(c); else txt.value = fmt(sig.peek()) } })
+    ui.bind(el, stepS, function ()  { if (!editing) txt.value = fmt(sig.peek()) })
+    ui.bind(el, precS, function ()  { if (!editing) txt.value = fmt(sig.peek()) })
 
     function enterEdit() {
       if (editing) return
       editing = true
       txt.readOnly = false
       el.classList.add('ef-ui-num-editing')
-      // Focus + select on next tick so pointerup doesn't immediately deselect.
       requestAnimationFrame(function () { txt.focus(); txt.select() })
     }
     function exitEdit(commitFlag) {
@@ -66,14 +85,12 @@
       txt.value = fmt(sig.peek())
     }
 
-    // Unified pointer session on the whole body. Identifies drag (scrub) vs
-    // click (→ edit if over text field).
     const SCRUB_THRESHOLD = 3
     el.addEventListener('pointerdown', function (e) {
       if (e.button !== 0) return
-      if (editing) return                                   // let the native input handle clicks
-      if (e.target === dec || e.target === inc) return      // nudge buttons own their clicks
-      e.preventDefault()                                    // block focus on mousedown
+      if (editing) return
+      if (e.target === dec || e.target === inc) return
+      e.preventDefault()
       const startX = e.clientX
       const startVal = sig.peek()
       const targetWasText = (e.target === txt)
@@ -87,7 +104,7 @@
           scrubbing = true
           el.classList.add('ef-ui-num-scrubbing')
         }
-        let mul = step
+        let mul = stepS.peek()
         if (ev.shiftKey) mul *= 10
         if (ev.ctrlKey || ev.metaKey) mul /= 10
         commit(startVal + dx * mul)
@@ -97,18 +114,14 @@
         el.removeEventListener('pointerup', onUp)
         el.removeEventListener('pointercancel', onUp)
         try { el.releasePointerCapture(ev.pointerId) } catch (_) {}
-        if (scrubbing) {
-          el.classList.remove('ef-ui-num-scrubbing')
-        } else if (targetWasText) {
-          enterEdit()
-        }
+        if (scrubbing) el.classList.remove('ef-ui-num-scrubbing')
+        else if (targetWasText) enterEdit()
       }
       el.addEventListener('pointermove', onMove)
       el.addEventListener('pointerup', onUp)
       el.addEventListener('pointercancel', onUp)
     })
 
-    // Double-click on any body area (including label / suffix) enters edit mode.
     el.addEventListener('dblclick', function (e) {
       if (e.target === dec || e.target === inc) return
       enterEdit()
@@ -116,13 +129,13 @@
 
     txt.addEventListener('blur', function () { exitEdit(true) })
     txt.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter')      { txt.blur() }
-      else if (e.key === 'Escape') { txt.value = fmt(sig.peek()); txt.blur() }
-      else if (e.key === 'ArrowUp')   { e.preventDefault(); commit(sig.peek() + step) }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); commit(sig.peek() - step) }
+      if (e.key === 'Enter')           { txt.blur() }
+      else if (e.key === 'Escape')     { txt.value = fmt(sig.peek()); txt.blur() }
+      else if (e.key === 'ArrowUp')    { e.preventDefault(); commit(sig.peek() + stepS.peek()) }
+      else if (e.key === 'ArrowDown')  { e.preventDefault(); commit(sig.peek() - stepS.peek()) }
     })
-    dec.addEventListener('click', function () { commit(sig.peek() - step) })
-    inc.addEventListener('click', function () { commit(sig.peek() + step) })
+    dec.addEventListener('click', function () { commit(sig.peek() - stepS.peek()) })
+    inc.addEventListener('click', function () { commit(sig.peek() + stepS.peek()) })
 
     return el
   }

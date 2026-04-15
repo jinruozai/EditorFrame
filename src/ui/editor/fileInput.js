@@ -1,6 +1,6 @@
 // EF.ui.fileInput — drop zone + click-to-pick file input.
 //
-// opts: { value: signal<File|null>, accept?, multiple? }
+// opts: { value: signal<File|null>, onChange?, accept?, multiple? }
 //   value: if multiple, signal holds File[]; otherwise File or null.
 ;(function (EF) {
   'use strict'
@@ -9,6 +9,7 @@
   ui.fileInput = function (opts) {
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value : null)
+    const doWrite = ui.writer(sig, o.onChange, 'ui.fileInput')
     const el = ui.h('div', 'ef-ui-fileinput')
     const inp = ui.h('input', null, { type: 'file' })
     if (o.accept) inp.accept = o.accept
@@ -24,7 +25,7 @@
     function update(files) {
       const arr = Array.from(files || [])
       if (!arr.length) return
-      sig.set(o.multiple ? arr : arr[0])
+      doWrite(o.multiple ? arr : arr[0])
     }
     ui.bind(el, sig, function (v) {
       if (!v) { tx.textContent = 'Click or drop file…'; return }

@@ -24,13 +24,21 @@
     const dur = o.duration == null ? 3500 : o.duration
     const stack = ensureStack()
 
-    const el = ui.h('div', 'ef-ui-toast ef-ui-toast-' + kind)
-    el.appendChild(ui.h('span', 'ef-ui-toast-icon', { text: ICONS[kind] || 'ⓘ' }))
+    // ARIA: errors/warnings use role=alert (assertive) so screen readers
+    // interrupt; info/success use role=status (polite).
+    const assertive = kind === 'error' || kind === 'warn'
+    const el = ui.h('div', 'ef-ui-toast ef-ui-toast-' + kind, {
+      role:           assertive ? 'alert'     : 'status',
+      'aria-live':    assertive ? 'assertive' : 'polite',
+      'aria-atomic':  'true',
+    })
+    el.appendChild(ui.h('span', 'ef-ui-toast-icon', { text: ICONS[kind] || 'ⓘ', 'aria-hidden': 'true' }))
     const body = ui.h('div', 'ef-ui-toast-body')
     if (o.title) body.appendChild(ui.h('div', 'ef-ui-toast-title', { text: o.title }))
     body.appendChild(ui.h('div', 'ef-ui-toast-msg', { text: o.message || '' }))
     el.appendChild(body)
-    const x = ui.h('button', 'ef-ui-toast-close', { type: 'button', text: '×' })
+    const x = ui.h('button', 'ef-ui-toast-close',
+      { type: 'button', text: '×', 'aria-label': 'Dismiss notification' })
     el.appendChild(x)
 
     stack.appendChild(el)

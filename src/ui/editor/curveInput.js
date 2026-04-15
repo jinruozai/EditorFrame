@@ -24,6 +24,7 @@
   ui.curveInput = function (opts) {
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value : [0.42, 0, 0.58, 1])
+    const doWrite = ui.writer(sig, o.onChange, 'ui.curveInput')
     const showPresets = !!o.presets
 
     const el     = ui.h('div', 'ef-ui-curve')
@@ -183,7 +184,7 @@
         const v = sig.peek().slice()
         v[dragIdx * 2]     = x
         v[dragIdx * 2 + 1] = y
-        sig.set(v)
+        doWrite(v)
       } else {
         const h = hit(px, py)
         if (h !== hoverIdx) {
@@ -234,7 +235,7 @@
       const presets = ui.h('div', 'ef-ui-curve-presets')
       PRESETS.forEach(function (p) {
         const btn = ui.h('button', 'ef-ui-curve-preset', { type: 'button', text: p.name })
-        btn.addEventListener('click', function () { sig.set(p.v.slice()) })
+        btn.addEventListener('click', function () { doWrite(p.v.slice()) })
         presets.appendChild(btn)
       })
       el.appendChild(presets)

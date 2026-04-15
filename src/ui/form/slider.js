@@ -1,53 +1,76 @@
 // EF.ui.slider — horizontal numeric slider with optional value bubble.
 //
-// opts: { value: signal<number>, min, max, step?, showValue?, suffix? }
+// opts: {
+//   value: number|signal, onChange?,
+//   min?: number|signal, max?: number|signal, step?: number|signal,
+//   showValue?: boolean|signal, suffix?: string|signal,
+// }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.slider = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : 0)
-    const min = o.min != null ? o.min : 0
-    const max = o.max != null ? o.max : 1
-    const step = o.step != null ? o.step : (max - min) / 100
+    const sig       = ui.asSig(o.value     != null ? o.value     : 0)
+    const minS      = ui.asSig(o.min       != null ? o.min       : 0)
+    const maxS      = ui.asSig(o.max       != null ? o.max       : 1)
+    const stepS     = ui.asSig(o.step      != null ? o.step      : 0)
+    const showValue = ui.asSig(o.showValue != null ? o.showValue : false)
+    const suffix    = ui.asSig(o.suffix    != null ? o.suffix    : '')
+    const doWrite = ui.writer(sig, o.onChange, 'ui.slider')
 
     const el = ui.h('div', 'ef-ui-slider')
     const track = ui.h('div', 'ef-ui-slider-track')
     const fill  = ui.h('div', 'ef-ui-slider-fill')
     const thumb = ui.h('div', 'ef-ui-slider-thumb')
+    const valueEl = ui.h('span', 'ef-ui-slider-value')
     track.appendChild(fill)
     track.appendChild(thumb)
     el.appendChild(track)
+    el.appendChild(valueEl)
 
-    let valueEl = null
-    if (o.showValue) {
-      valueEl = ui.h('span', 'ef-ui-slider-value')
-      el.appendChild(valueEl)
-    }
-
+    function step()       { return stepS.peek() || ((maxS.peek() - minS.peek()) / 100) }
     function quantize(v) {
-      v = Math.max(min, Math.min(max, v))
-      if (step) v = Math.round((v - min) / step) * step + min
+      const mn = minS.peek(), mx = maxS.peek(), s = step()
+      v = Math.max(mn, Math.min(mx, v))
+      if (s) v = Math.round((v - mn) / s) * s + mn
       return v
     }
-    function pct(v) { return ((v - min) / (max - min)) * 100 }
+    function pct(v) {
+      const mn = minS.peek(), mx = maxS.peek()
+      if (mx === mn) return 0
+      return ((v - mn) / (mx - mn)) * 100
+    }
 
-    ui.bind(el, sig, function (v) {
+    // One effect collecting value + min/max/step + showValue/suffix so every
+    // change repaints the geometry and label together.
+    function repaint() {
+      const v = sig.peek()
       const p = pct(v)
       fill.style.width = p + '%'
       thumb.style.left = p + '%'
-      if (valueEl) valueEl.textContent = (Number(v).toFixed(step < 1 ? 2 : 0)) + (o.suffix || '')
-    })
+      const show = !!showValue.peek()
+      valueEl.style.display = show ? '' : 'none'
+      if (show) {
+        const s = step()
+        valueEl.textContent = Number(v).toFixed(s && s < 1 ? 2 : 0) + (suffix.peek() || '')
+      }
+    }
+    ui.bind(el, sig,       repaint)
+    ui.bind(el, minS,      repaint)
+    ui.bind(el, maxS,      repaint)
+    ui.bind(el, stepS,     repaint)
+    ui.bind(el, showValue, repaint)
+    ui.bind(el, suffix,    repaint)
 
     function fromEvent(e) {
       const r = track.getBoundingClientRect()
       const t = (e.clientX - r.left) / r.width
-      return quantize(min + t * (max - min))
+      return quantize(minS.peek() + t * (maxS.peek() - minS.peek()))
     }
     ui.attachDrag(track, {
-      onStart: function (e) { sig.set(fromEvent(e)) },
-      onMove:  function (e) { sig.set(fromEvent(e)) },
+      onStart: function (e) { doWrite(fromEvent(e)) },
+      onMove:  function (e) { doWrite(fromEvent(e)) },
     })
 
     return el

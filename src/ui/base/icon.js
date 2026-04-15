@@ -8,11 +8,14 @@
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
-  // EF.ui.icon({ glyph: '⛶', size: 'sm' | 'md' | 'lg' })
+  // EF.ui.icon({ glyph: '⛶' | signal, size: 'sm' | 'md' | 'lg' | signal })
   ui.icon = function (opts) {
     const o = opts || {}
-    const el = ui.h('span', 'ef-ui-icon ef-ui-icon-' + (o.size || 'md'))
-    el.textContent = o.glyph || ''
+    const glyph = ui.asSig(o.glyph != null ? o.glyph : '')
+    const size  = ui.asSig(o.size  != null ? o.size  : 'md')
+    const el = ui.h('span', 'ef-ui-icon')
+    ui.bindClass(el, size, 'ef-ui-icon-')
+    ui.bindText(el, glyph)
     return el
   }
 })(window.EF = window.EF || {})

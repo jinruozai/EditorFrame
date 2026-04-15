@@ -73,19 +73,4 @@
     floating.style.top  = p.top  + 'px'
     floating.style.visibility = ''
   }
-
-  // dismissOnOutside(floating, onDismiss): clicks/ESC outside `floating`
-  // call onDismiss(). Returns an unbind function.
-  ui.dismissOnOutside = function (floating, onDismiss) {
-    function onDown(e) {
-      if (!floating.contains(e.target)) onDismiss()
-    }
-    function onKey(e) { if (e.key === 'Escape') onDismiss() }
-    setTimeout(function () { document.addEventListener('mousedown', onDown, true) }, 0)
-    document.addEventListener('keydown', onKey)
-    return function () {
-      document.removeEventListener('mousedown', onDown, true)
-      document.removeEventListener('keydown', onKey)
-    }
-  }
 })(window.EF = window.EF || {})

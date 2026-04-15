@@ -65,7 +65,8 @@
       widget: partial.widget,
     }
     if (partial.name != null)         p.name         = partial.name
-    if (partial.title != null)        p.title        = partial.title
+    // § 4.9 Layer 2: title defaults to widget name when not provided.
+    p.title = partial.title != null ? partial.title : partial.widget
     if (partial.icon != null)         p.icon         = partial.icon
     if (partial.dirty)                p.dirty        = true
     if (partial.badge != null)        p.badge        = partial.badge
@@ -269,6 +270,15 @@
   }
 
   // ─── panel-level updates ──────────────────────────────────
+  //
+  // § 4.4 — transient panel as "preview slot".
+  // A dock holds AT MOST one transient panel. Adding a new transient evicts
+  // any existing transient(s) in the same dock before insertion. This is
+  // the preview-slot semantic every IDE with transient tabs implements
+  // (VSCode / JetBrains / Xcode): single-clicking files in a tree replaces
+  // the preview tab, double-click (or explicit promote) sticks it.
+  // Framework bakes this into addPanel so callers just pass { transient: true }
+  // without reimplementing the eviction dance on top.
   function addPanel(tree, dockId, partial, opts) {
     const found = findDock(tree, dockId)
     if (!found) throw new Error('addPanel: dock not found: ' + dockId)
@@ -278,7 +288,11 @@
       throw new Error('addPanel: dock "' + dockId + '" does not accept widget "' + partial.widget + '"')
     const p = panel(partial)
     if (opts && opts.transient) p.transient = true
-    const newPanels = found.node.panels.concat([p])
+    let existing = found.node.panels
+    if (p.transient) {
+      existing = existing.filter(function (ep) { return !ep.transient })
+    }
+    const newPanels = existing.concat([p])
     const newDock = Object.assign({}, found.node, {
       panels:   newPanels,
       activeId: p.id, // newly added becomes active by default

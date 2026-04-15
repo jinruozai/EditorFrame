@@ -1,43 +1,48 @@
 // EF.ui.input — single-line text input bound to a signal.
 //
 // opts:
-//   value       : signal<string>      required
-//   placeholder : string
-//   disabled    : bool | signal
-//   readOnly    : bool
-//   prefix      : string | HTMLElement   (visual icon/label inside the well)
+//   value       : string | signal<string>   (auto-wrapped if plain)
+//   onChange    : (v) => void                 required if `value` is read-only
+//   placeholder : string | signal<string>
+//   disabled    : boolean | signal<boolean>
+//   readOnly    : boolean | signal<boolean>
+//   prefix      : string | HTMLElement        visual icon/label inside the well
 //   suffix      : string | HTMLElement
-//   onCommit    : (v) => void            fired on Enter / blur (not every keystroke)
+//   onCommit    : (v) => void                 fired on Enter / blur
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.input = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : '')
+    const sig         = ui.asSig(o.value       != null ? o.value       : '')
+    const placeholder = ui.asSig(o.placeholder != null ? o.placeholder : '')
+    const disabled    = ui.asSig(o.disabled    != null ? o.disabled    : false)
+    const readOnly    = ui.asSig(o.readOnly    != null ? o.readOnly    : false)
+    const doWrite = ui.writer(sig, o.onChange, 'ui.input')
+
     const wrap = ui.h('div', 'ef-ui-field')
     if (o.prefix != null) wrap.appendChild(slot(o.prefix, 'prefix'))
-    const el = ui.h('input', 'ef-ui-input', {
-      type: 'text',
-      placeholder: o.placeholder || '',
-    })
-    if (o.readOnly) el.readOnly = true
+    const el = ui.h('input', 'ef-ui-input', { type: 'text' })
     wrap.appendChild(el)
     if (o.suffix != null) wrap.appendChild(slot(o.suffix, 'suffix'))
 
+    ui.bindAttr(el, placeholder, 'placeholder')
+    ui.bindAttr(el, readOnly,    'readOnly')
     ui.bind(wrap, sig, function (v) {
       if (document.activeElement !== el) el.value = v == null ? '' : String(v)
     })
-    el.addEventListener('input', function () { sig.set(el.value) })
+    ui.bind(wrap, disabled, function (v) {
+      el.disabled = !!v
+      wrap.classList.toggle('ef-ui-field-disabled', !!v)
+    })
+
+    el.addEventListener('input', function () { doWrite(el.value) })
     el.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && o.onCommit) o.onCommit(el.value)
     })
     el.addEventListener('blur', function () { o.onCommit && o.onCommit(el.value) })
 
-    if (o.disabled != null) {
-      if (ui.isSignal(o.disabled)) ui.bind(wrap, o.disabled, function (v) { el.disabled = !!v; wrap.classList.toggle('ef-ui-field-disabled', !!v) })
-      else { el.disabled = !!o.disabled; if (o.disabled) wrap.classList.add('ef-ui-field-disabled') }
-    }
     return wrap
   }
 

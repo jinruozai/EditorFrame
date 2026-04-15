@@ -32,8 +32,8 @@ const JS_ORDER = [
   'tree/tree.js',
 
   // Layer 2 — registry & widget context
-  'widgets/registry.js',
-  'widgets/context.js',
+  'core/registry.js',
+  'core/context.js',
 
   // Layer 3 — dock runtime
   'dock/runtime.js',
@@ -42,15 +42,12 @@ const JS_ORDER = [
   'dock/migrate.js',
   'dock/layout.js',
 
-  // Layer 4 — built-in framework widgets
-  'widgets/tab.js',
-  'widgets/error-log.js',
-
   // Layer 5 — UI library internals
   'ui/_internal/_portal.js',
   'ui/_internal/_floating.js',
   'ui/_internal/_drag.js',
   'ui/_internal/_signal.js',
+  'ui/_internal/_overlay.js',
 
   // Layer 6 — UI library: base
   'ui/base/icon.js',
@@ -80,6 +77,7 @@ const JS_ORDER = [
   'ui/form/colorInput.js',
   'ui/form/enumInput.js',
   'ui/form/tagInput.js',
+  'ui/form/tab.js',
 
   // Layer 8 — UI library: editor specials
   'ui/editor/gradientInput.js',
@@ -93,7 +91,7 @@ const JS_ORDER = [
   'ui/container/propRow.js',
   'ui/container/card.js',
   'ui/container/scrollArea.js',
-  'ui/container/inlineTabs.js',
+  'ui/container/tabPanel.js',
 
   // Layer 10 — UI library: data
   'ui/data/list.js',
@@ -108,6 +106,10 @@ const JS_ORDER = [
   'ui/overlay/drawer.js',
   'ui/overlay/alert.js',
   'ui/overlay/toast.js',
+
+  // Layer 12 — built-in panel widgets (compose EF.ui.* + register via EF.registerWidget)
+  'ui/panel/dock-tabs.js',
+  'ui/panel/log.js',
 ]
 
 const CSS_ORDER = [

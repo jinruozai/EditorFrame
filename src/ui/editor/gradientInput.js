@@ -18,6 +18,7 @@
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value
       : { stops: [{ pos: 0, color: '#000000' }, { pos: 1, color: '#ffffff' }] })
+    const doWrite = ui.writer(sig, o.onChange, 'ui.gradientInput')
 
     const el = ui.h('div', 'ef-ui-gradient')
     const barWrap = ui.h('div', 'ef-ui-gradient-barwrap')
@@ -66,7 +67,7 @@
           const data = sig.peek()
           const stops = data.stops.slice()
           stops[idx] = { pos: p, color: stops[idx].color }
-          sig.set({ stops: stops })
+          doWrite({ stops: stops })
         }
         function onUp(ev) {
           h.removeEventListener('pointermove', onMove)
@@ -137,7 +138,7 @@
       const stops = data.stops.slice()
       stops.push({ pos: p, color: color })
       selectedIdx = stops.length - 1
-      sig.set({ stops: stops })
+      doWrite({ stops: stops })
     })
     rail.addEventListener('click', function (e) { e.stopPropagation() })
 
@@ -147,7 +148,7 @@
       const stops = data.stops.slice()
       stops.splice(idx, 1)
       if (selectedIdx >= stops.length) selectedIdx = stops.length - 1
-      sig.set({ stops: stops })
+      doWrite({ stops: stops })
     }
 
     // ── Color editor row ─────────────────────────────────────────
@@ -174,7 +175,7 @@
       if (s && s.color !== c) {
         const stops = data.stops.slice()
         stops[selectedIdx] = { pos: s.pos, color: c }
-        sig.set({ stops: stops })
+        doWrite({ stops: stops })
       }
     }))
 

@@ -1,17 +1,26 @@
 // EF.ui.progressBar — determinate progress bar (0..1) or indeterminate.
 //
-// opts: { value: signal<number> | number, indeterminate?, label? }
+// opts: {
+//   value?: number|signal,
+//   indeterminate?: bool|signal,
+//   label?: string|signal,
+// }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.progressBar = function (opts) {
     const o = opts || {}
-    const el = ui.h('div', 'ef-ui-progress' + (o.indeterminate ? ' ef-ui-progress-ind' : ''))
+    const indeterminate = ui.asSig(o.indeterminate != null ? o.indeterminate : false)
+    const el = ui.h('div', 'ef-ui-progress')
     const fill = ui.h('div', 'ef-ui-progress-fill')
     el.appendChild(fill)
+    ui.bind(el, indeterminate, function (v) { el.classList.toggle('ef-ui-progress-ind', !!v) })
+
     if (o.label != null) {
-      const lab = ui.h('span', 'ef-ui-progress-label', { text: String(o.label) })
+      const label = ui.asSig(o.label)
+      const lab = ui.h('span', 'ef-ui-progress-label')
+      ui.bindText(lab, label)
       el.appendChild(lab)
     }
     if (o.value != null) {

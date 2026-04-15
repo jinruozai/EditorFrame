@@ -5,6 +5,8 @@
 //   rowHeight : number                   pixels per row
 //   render    : (item, index) => HTMLElement       row factory (called on demand)
 //   selected? : signal<any>              optional single selection (item ref)
+//   onSelect? : (item) => void            optional write path for `selected`
+//                                         (required only if `selected` is read-only)
 //   onActivate? : (item, index) => void   double-click handler
 ;(function (EF) {
   'use strict'
@@ -16,6 +18,7 @@
     const rowH = o.rowHeight || 22
     const render = o.render || function (it) { return ui.h('div', null, { text: String(it) }) }
     const selected = o.selected
+    const writeSelected = selected ? ui.writer(selected, o.onSelect, 'ui.list') : null
 
     const el = ui.h('div', 'ef-ui-list ef-ui-scrollarea')
     const spacer = ui.h('div', 'ef-ui-list-spacer')
@@ -47,7 +50,7 @@
           row.classList.add('ef-ui-list-row')
           row.dataset.idx = i
           if (selected && selected.peek() === arr[i]) row.classList.add('ef-ui-list-row-active')
-          row.addEventListener('click', function () { if (selected) selected.set(arr[i]) })
+          row.addEventListener('click', function () { if (writeSelected) writeSelected(arr[i]) })
           if (o.onActivate) row.addEventListener('dblclick', function () { o.onActivate(arr[i], i) })
           cache.set(i, row)
           win.appendChild(row)

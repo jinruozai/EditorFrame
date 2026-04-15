@@ -164,3 +164,104 @@
   color: var(--ef-fg-0);
   pointer-events: none;
 }
+
+/* ── log panel (built on ui.card + ui.scrollArea + ui.segmented) ─ */
+.ef-ui-errlog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.ef-ui-errlog-bar {
+  display: flex;
+  gap: var(--ef-space-2);
+  align-items: center;
+  padding: var(--ef-space-2);
+  border-bottom: 1px solid var(--ef-border);
+  flex: 0 0 auto;
+}
+.ef-ui-errlog-bar .ef-ui-select { flex: 0 0 96px; width: 96px; min-width: 0; }
+.ef-ui-errlog-bar .ef-ui-btn { flex: 0 0 auto; }
+.ef-ui-errlog-spacer { flex: 1 1 auto; }
+.ef-ui-errlog .ef-ui-scrollarea {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--ef-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ef-space-2);
+}
+.ef-ui-errlog-empty {
+  color: var(--ef-fg-2);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  font-style: italic;
+  padding: var(--ef-space-3);
+}
+.ef-ui-errlog-row {
+  cursor: pointer;
+  border-color: var(--ef-border);
+  transition: background var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-errlog-row:hover {
+  background: var(--ef-bg-2);
+}
+.ef-ui-errlog-row-error {
+  border-color: color-mix(in srgb, var(--ef-error) 40%, var(--ef-border));
+  background: var(--ef-error-bg);
+}
+.ef-ui-errlog-row-error:hover {
+  background: color-mix(in srgb, var(--ef-error) 18%, var(--ef-bg-2));
+}
+.ef-ui-errlog-row-warn {
+  border-color: color-mix(in srgb, var(--ef-warning) 40%, var(--ef-border));
+  background: color-mix(in srgb, var(--ef-warning) 10%, var(--ef-bg-1));
+}
+.ef-ui-errlog-head {
+  display: flex;
+  gap: var(--ef-space-2);
+  align-items: center;
+  margin-bottom: 2px;
+}
+.ef-ui-errlog-level {
+  font: var(--ef-fs-xs) var(--ef-font-mono);
+  letter-spacing: .04em;
+  padding: 1px var(--ef-space-1);
+  border-radius: var(--ef-radius-sm);
+  background: var(--ef-bg-3);
+  color: var(--ef-fg-2);
+}
+.ef-ui-errlog-level-error {
+  background: color-mix(in srgb, var(--ef-error) 20%, transparent);
+  color: var(--ef-error);
+}
+.ef-ui-errlog-level-warn {
+  background: color-mix(in srgb, var(--ef-warning) 20%, transparent);
+  color: var(--ef-warning);
+}
+.ef-ui-errlog-level-info {
+  background: color-mix(in srgb, var(--ef-accent) 18%, transparent);
+  color: var(--ef-accent);
+}
+.ef-ui-errlog-level-debug {
+  background: var(--ef-bg-3);
+  color: var(--ef-fg-3);
+}
+.ef-ui-errlog-src {
+  color: var(--ef-fg-3);
+  font: var(--ef-fs-xs) var(--ef-font-mono);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.ef-ui-errlog-msg {
+  color: var(--ef-fg-0);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+}
+.ef-ui-errlog-stk {
+  color: var(--ef-fg-2);
+  font: var(--ef-fs-xs)/var(--ef-lh-base) var(--ef-font-mono);
+  white-space: pre-wrap;
+  margin: var(--ef-space-1) 0 0;
+  max-height: 100px;
+  overflow: hidden;
+}

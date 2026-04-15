@@ -8,6 +8,8 @@
 // opts:
 //   items     : signal<TreeNode[]>
 //   selected? : signal<id | null>
+//   onSelect? : (id) => void       optional write path for `selected`
+//                                  (required only if `selected` is read-only)
 //   rowHeight?: number      (default 22)
 //   onActivate? : (node) => void
 ;(function (EF) {
@@ -18,6 +20,7 @@
     const o = opts || {}
     const items = ui.asSig(o.items != null ? o.items : [])
     const selected = o.selected
+    const writeSelected = selected ? ui.writer(selected, o.onSelect, 'ui.tree') : null
     const rowH = o.rowHeight || 22
     const expanded = EF.signal(new Set())
 
@@ -78,7 +81,7 @@
       }))
       ui.collect(listEl, EF.effect(function () {
         const r = proxy()
-        if (r && selected.peek() !== r.node.id) selected.set(r.node.id)
+        if (r && selected.peek() !== r.node.id) writeSelected(r.node.id)
       }))
     }
 

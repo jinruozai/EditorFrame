@@ -1,25 +1,30 @@
 // EF.ui.textarea — multi-line text bound to a signal.
 //
-// opts: { value: signal<string>, placeholder?, rows?, disabled?, mono? }
+// opts: {
+//   value: string|signal, onChange?,
+//   placeholder?: string|signal, rows?: number,
+//   disabled?: boolean|signal, mono?: boolean|signal,
+// }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.textarea = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : '')
-    const el = ui.h('textarea', 'ef-ui-textarea' + (o.mono ? ' ef-ui-textarea-mono' : ''), {
-      placeholder: o.placeholder || '',
-      rows: String(o.rows || 4),
-    })
+    const sig         = ui.asSig(o.value       != null ? o.value       : '')
+    const placeholder = ui.asSig(o.placeholder != null ? o.placeholder : '')
+    const disabled    = ui.asSig(o.disabled    != null ? o.disabled    : false)
+    const mono        = ui.asSig(o.mono        != null ? o.mono        : false)
+    const doWrite = ui.writer(sig, o.onChange, 'ui.textarea')
+
+    const el = ui.h('textarea', 'ef-ui-textarea', { rows: String(o.rows || 4) })
+    ui.bindAttr(el, placeholder, 'placeholder')
+    ui.bindAttr(el, disabled,    'disabled')
+    ui.bind(el, mono, function (v) { el.classList.toggle('ef-ui-textarea-mono', !!v) })
     ui.bind(el, sig, function (v) {
       if (document.activeElement !== el) el.value = v == null ? '' : String(v)
     })
-    el.addEventListener('input', function () { sig.set(el.value) })
-    if (o.disabled != null) {
-      if (ui.isSignal(o.disabled)) ui.bind(el, o.disabled, function (v) { el.disabled = !!v })
-      else el.disabled = !!o.disabled
-    }
+    el.addEventListener('input', function () { doWrite(el.value) })
     return el
   }
 })(window.EF = window.EF || {})

@@ -57,6 +57,7 @@
       },
       removePanel: function (panelId) { layout.removePanel(panelId) },
       activatePanel: function (panelId) { layout.activatePanel(panelId) },
+      promotePanel: function (panelId) { tree.set(EF.promotePanel(tree.peek(), panelId)) },
       movePanel: function (panelId, dstDockId, dstIndex) {
         tree.set(EF.movePanel(tree.peek(), panelId, dstDockId, dstIndex))
         layout.markActivation(panelId)

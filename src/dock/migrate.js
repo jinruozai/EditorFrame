@@ -24,6 +24,22 @@
 
   let _txCounter = 0
 
+  // Trust boundary: messages must come from / go to the same origin. This
+  // prevents a popup that has been navigated elsewhere — or a cross-origin
+  // frame that got hold of our handle — from driving the migration protocol.
+  // Note file:// gives 'null' for both sides, which still matches.
+  function targetOriginFor(w) {
+    try { return w.location.origin || window.location.origin }
+    catch (e) { return window.location.origin }
+  }
+
+  function isTrustedEvent(ev, expectedSource) {
+    if (ev.source !== expectedSource) return false
+    // `null` origins (file://, sandboxed iframes) are allowed to each
+    // other — they're the same trust zone the demo already runs in.
+    return ev.origin === window.location.origin || ev.origin === 'null' || ev.origin === ''
+  }
+
   function popOutPanel(panelId, layout, screenX, screenY) {
     const pr = EF._dock.findPanelRuntime(layout, panelId)
     if (!pr) return
@@ -56,7 +72,7 @@
     }
 
     function onMessage(ev) {
-      if (ev.source !== w) return
+      if (!isTrustedEvent(ev, w)) return
       const msg = ev.data
       if (!msg || !msg.efAction) return
       if (msg.efAction === 'ready') {
@@ -76,7 +92,7 @@
           txId:      txId,
           panelData: cleanData,
           state:     state,
-        }, '*')
+        }, targetOriginFor(w))
       } else if (msg.efAction === 'migrate-ack' && msg.txId === txId) {
         window.removeEventListener('message', onMessage)
         layout.removePanel(panelId)
@@ -96,7 +112,7 @@
     if (!window.opener) return // not a popup, nothing to do
 
     window.addEventListener('message', function (ev) {
-      if (ev.source !== window.opener) return
+      if (!isTrustedEvent(ev, window.opener)) return
       const msg = ev.data
       if (!msg || msg.efAction !== 'migrate') return
       acceptMigration(layout, msg, window.opener)
@@ -105,7 +121,7 @@
     // Tell opener we're ready to receive. postMessage queues if no listener
     // yet, but the source registers its listener synchronously before this
     // runs in the popup, so ordering is fine.
-    try { window.opener.postMessage({ efAction: 'ready' }, '*') }
+    try { window.opener.postMessage({ efAction: 'ready' }, targetOriginFor(window.opener)) }
     catch (e) { /* opener may have closed */ }
   }
 
@@ -123,7 +139,7 @@
     })
 
     if (!targetId) {
-      try { opener.postMessage({ efAction: 'migrate-reject', txId: msg.txId }, '*') }
+      try { opener.postMessage({ efAction: 'migrate-reject', txId: msg.txId }, targetOriginFor(opener)) }
       catch (e) {}
       return
     }
@@ -152,7 +168,7 @@
       }
     }
 
-    try { opener.postMessage({ efAction: 'migrate-ack', txId: msg.txId }, '*') }
+    try { opener.postMessage({ efAction: 'migrate-ack', txId: msg.txId }, targetOriginFor(opener)) }
     catch (e) {}
   }
 

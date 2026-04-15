@@ -1,6 +1,6 @@
 // EF.ui.colorInput — color swatch + popover with HSV picker + hex input.
 //
-// opts: { value: signal<string>, format?: 'hex' | 'rgba' }   (default 'hex')
+// opts: { value: signal<string>, onChange?, format?: 'hex' | 'rgba' }   (default 'hex')
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
@@ -8,6 +8,7 @@
   ui.colorInput = function (opts) {
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value : '#7b6ef6')
+    const doWrite = ui.writer(sig, o.onChange, 'ui.colorInput')
 
     const el = ui.h('div', 'ef-ui-color')
     const swatch = ui.h('div', 'ef-ui-color-swatch')
@@ -20,13 +21,13 @@
     })
     text.addEventListener('input', function () {
       const v = text.value.trim()
-      if (/^#[0-9a-f]{6}$/i.test(v) || /^#[0-9a-f]{3}$/i.test(v)) sig.set(v)
+      if (/^#[0-9a-f]{6}$/i.test(v) || /^#[0-9a-f]{3}$/i.test(v)) doWrite(v)
     })
 
     let pop = null
     swatch.addEventListener('click', function () {
       if (pop) { pop.close(); pop = null; return }
-      pop = openPicker(el, sig, function () { pop = null })
+      pop = openPicker(el, sig, doWrite, function () { pop = null })
     })
     // If the widget is disposed while the picker is open, tear it down.
     ui.collect(el, function () { if (pop) { pop.close(); pop = null } })
@@ -34,7 +35,7 @@
   }
 
   // ── HSV picker popover ─────────────────────────────────────────
-  function openPicker(anchor, sig, onClose) {
+  function openPicker(anchor, sig, doWrite, onClose) {
     const wrap = ui.h('div', 'ef-ui-color-picker')
 
     const hsv = hexToHsv(sig.peek()) || { h: 0, s: 1, v: 1 }
@@ -62,7 +63,7 @@
       svDot.style.top  = ((1 - sigV.peek()) * 100) + '%'
       hueDot.style.left = (sigH.peek() * 100) + '%'
       const out = hsvToHex(sigH.peek(), sigS.peek(), sigV.peek())
-      sig.set(out)
+      doWrite(out)
       if (document.activeElement !== hex) hex.value = out
     }
     const stopEffect = EF.effect(function () { sigH(); sigS(); sigV(); update() })

@@ -1,6 +1,10 @@
 // EF.ui.card — bordered container with optional title bar.
 //
-// opts: { title?, children?: HTMLElement[] | HTMLElement, padded? }
+// opts: {
+//   title?: string|signal,
+//   children?: HTMLElement[] | HTMLElement,
+//   padded?: boolean,
+// }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
@@ -8,8 +12,10 @@
   ui.card = function (opts) {
     const o = opts || {}
     const el = ui.h('div', 'ef-ui-card' + (o.padded === false ? '' : ' ef-ui-card-padded'))
-    if (o.title) {
-      const head = ui.h('div', 'ef-ui-card-head', { text: o.title })
+    if (o.title != null) {
+      const title = ui.asSig(o.title)
+      const head = ui.h('div', 'ef-ui-card-head')
+      ui.bindText(head, title)
       el.appendChild(head)
     }
     const body = ui.h('div', 'ef-ui-card-body')

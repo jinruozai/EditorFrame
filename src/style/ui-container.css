@@ -96,31 +96,3 @@
 }
 .ef-ui-scrollarea::-webkit-scrollbar-thumb:hover { background: var(--ef-fg-3); }
 
-/* ── inlineTabs ─────────────────────────────────────────────────── */
-.ef-ui-inline-tabs {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-.ef-ui-inline-tabs-head {
-  display: flex;
-  border-bottom: 1px solid var(--ef-border);
-  padding: 0 var(--ef-space-2);
-  gap: 2px;
-}
-.ef-ui-inline-tabs-btn {
-  background: transparent;
-  border: 0;
-  color: var(--ef-fg-2);
-  padding: var(--ef-space-2) var(--ef-space-3);
-  font: var(--ef-fs-md) var(--ef-font-ui);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
-.ef-ui-inline-tabs-btn:hover { color: var(--ef-fg-0); }
-.ef-ui-inline-tabs-active {
-  color: var(--ef-fg-0);
-  border-bottom-color: var(--ef-accent);
-}
-.ef-ui-inline-tabs-body { padding: var(--ef-space-2) 0; }

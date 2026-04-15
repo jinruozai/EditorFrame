@@ -1,22 +1,35 @@
 // EF.ui.iconButton — square icon-only button (toolbars, table row actions).
 //
-// opts: { icon, title, size?, kind?, disabled?, onClick }
+// opts: { icon, title, ariaLabel?, size?, kind?, disabled?, onClick }
+//
+// All display props (icon, size, kind, disabled) accept either a plain value
+// or a signal. `title` and `ariaLabel` are construction-time identity strings
+// and stay plain — at least one of them is required for accessibility (§ a11y
+// contract), and we throw loudly at construction if neither is supplied.
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.iconButton = function (opts) {
     const o = opts || {}
-    const size = o.size || 'md'
-    const kind = o.kind || 'ghost'
-    const el = ui.h('button',
-      'ef-ui-icon-btn ef-ui-icon-btn-' + size + ' ef-ui-btn-' + kind,
-      { type: 'button', title: o.title || '' })
-    el.appendChild(ui.icon({ glyph: o.icon || '·', size: size }))
-    if (o.disabled != null) {
-      if (ui.isSignal(o.disabled)) ui.bind(el, o.disabled, function (v) { el.disabled = !!v })
-      else el.disabled = !!o.disabled
+    const label = o.ariaLabel || o.title
+    if (!label) {
+      throw new Error('ui.iconButton: `title` or `ariaLabel` is required for accessibility')
     }
+    const icon     = ui.asSig(o.icon     != null ? o.icon     : '·')
+    const size     = ui.asSig(o.size     != null ? o.size     : 'md')
+    const kind     = ui.asSig(o.kind     != null ? o.kind     : 'ghost')
+    const disabled = ui.asSig(o.disabled != null ? o.disabled : false)
+
+    const el = ui.h('button', 'ef-ui-icon-btn',
+      { type: 'button', title: o.title || label, 'aria-label': label })
+    ui.bindClass(el, size, 'ef-ui-icon-btn-')
+    ui.bindClass(el, kind, 'ef-ui-btn-')
+    ui.bindAttr(el, disabled, 'disabled')
+
+    // Inner icon element tracks both glyph and size via the same signals.
+    el.appendChild(ui.icon({ glyph: icon, size: size }))
+
     if (o.onClick) el.addEventListener('click', function (e) { if (!el.disabled) o.onClick(e) })
     return el
   }

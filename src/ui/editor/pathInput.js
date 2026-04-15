@@ -5,31 +5,46 @@
 // to <input type=file>). For demos we expose `useFileInput: true` which
 // uses the browser file picker to grab a name only.
 //
-// opts: { value: signal<string>, placeholder?, useFileInput?, onBrowse?, mode?: 'file'|'folder' }
+// opts: {
+//   value: signal<string>, onChange?,
+//   placeholder?: string|signal,
+//   disabled?: bool|signal,
+//   useFileInput?, onBrowse?,
+//   mode?: 'file'|'folder'|signal,
+// }
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.pathInput = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : '')
+    const sig         = ui.asSig(o.value       != null ? o.value       : '')
+    const placeholder = ui.asSig(o.placeholder != null ? o.placeholder : 'Path...')
+    const disabled    = ui.asSig(o.disabled    != null ? o.disabled    : false)
+    const mode        = ui.asSig(o.mode        != null ? o.mode        : 'file')
+    const doWrite = ui.writer(sig, o.onChange, 'ui.pathInput')
     const el = ui.h('div', 'ef-ui-field ef-ui-path')
-    const ic = ui.h('span', 'ef-ui-field-prefix', { text: o.mode === 'folder' ? '📁' : '📄' })
-    const inp = ui.h('input', 'ef-ui-input', { type: 'text', placeholder: o.placeholder || 'Path...' })
+    const ic = ui.h('span', 'ef-ui-field-prefix')
+    const inp = ui.h('input', 'ef-ui-input', { type: 'text' })
     const btn = ui.h('button', 'ef-ui-path-browse', { type: 'button', text: '…' })
     el.appendChild(ic); el.appendChild(inp); el.appendChild(btn)
 
+    ui.bind(el, mode, function (v) { ic.textContent = v === 'folder' ? '📁' : '📄' })
+    ui.bindAttr(inp, placeholder, 'placeholder')
+    ui.bindAttr(inp, disabled, 'disabled')
+    ui.bindAttr(btn, disabled, 'disabled')
     ui.bind(el, sig, function (v) { if (document.activeElement !== inp) inp.value = v || '' })
-    inp.addEventListener('input', function () { sig.set(inp.value) })
+    inp.addEventListener('input', function () { doWrite(inp.value) })
     btn.addEventListener('click', function () {
+      if (disabled.peek()) return
       if (o.useFileInput) {
         const f = ui.h('input', null, { type: 'file' })
         f.style.display = 'none'
         document.body.appendChild(f)
-        f.addEventListener('change', function () { if (f.files[0]) sig.set(f.files[0].name); document.body.removeChild(f) })
+        f.addEventListener('change', function () { if (f.files[0]) doWrite(f.files[0].name); document.body.removeChild(f) })
         f.click()
       } else if (o.onBrowse) {
-        o.onBrowse(function (path) { if (path) sig.set(path) })
+        o.onBrowse(function (path) { if (path) doWrite(path) })
       }
     })
     return el
