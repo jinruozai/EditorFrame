@@ -3477,9 +3477,10 @@
         row.addEventListener('click', function () { sig.set(it.value); pop && pop.close(); pop = null })
         list.appendChild(row)
       }
-      pop = ui.popover({ anchor: el, content: list, side: 'bottom', align: 'start' })
+      pop = ui.popover({ anchor: el, content: list, side: 'bottom', align: 'start', onDismiss: function () { pop = null } })
       list.style.minWidth = el.getBoundingClientRect().width + 'px'
     })
+    ui.collect(el, function () { if (pop) { pop.close(); pop = null } })
 
     return el
   }
@@ -3536,6 +3537,7 @@
     inp.addEventListener('focus', open)
     inp.addEventListener('input', function () { sig.set(inp.value); reopen() })
     arrow.addEventListener('mousedown', function (e) { e.preventDefault(); inp.focus(); pop ? close() : open() })
+    ui.collect(wrap, close)
 
     return wrap
   }
@@ -3572,6 +3574,8 @@
       if (pop) { pop.close(); pop = null; return }
       pop = openPicker(el, sig, function () { pop = null })
     })
+    // If the widget is disposed while the picker is open, tear it down.
+    ui.collect(el, function () { if (pop) { pop.close(); pop = null } })
     return el
   }
 
@@ -3607,7 +3611,7 @@
       sig.set(out)
       if (document.activeElement !== hex) hex.value = out
     }
-    EF.effect(function () { sigH(); sigS(); sigV(); update() })
+    const stopEffect = EF.effect(function () { sigH(); sigS(); sigV(); update() })
 
     ui.attachDrag(sv, {
       onStart: scrubSv, onMove: scrubSv,
@@ -3629,7 +3633,10 @@
       if (h) { sigH.set(h.h); sigS.set(h.s); sigV.set(h.v) }
     })
 
-    return ui.popover({ anchor: anchor, content: wrap, side: 'bottom', align: 'start', onDismiss: onClose })
+    return ui.popover({
+      anchor: anchor, content: wrap, side: 'bottom', align: 'start',
+      onDismiss: function () { stopEffect(); onClose && onClose() },
+    })
   }
 
   // ── color math ─────────────────────────────────────────────────
@@ -3815,12 +3822,12 @@
     // Selected color editor
     const editorRow = ui.h('div', 'ef-ui-gradient-editor')
     const colorSig = EF.signal('#888888')
-    EF.effect(function () {
+    ui.collect(el, EF.effect(function () {
       const data = sig()
       const s = data.stops[selectedIdx]
       if (s) colorSig.set(s.color)
-    })
-    EF.effect(function () {
+    }))
+    ui.collect(el, EF.effect(function () {
       const c = colorSig()
       const data = sig.peek()
       const s = data.stops[selectedIdx]
@@ -3829,7 +3836,7 @@
         stops[selectedIdx] = { pos: s.pos, color: c }
         sig.set({ stops: stops })
       }
-    })
+    }))
     editorRow.appendChild(ui.colorInput({ value: colorSig }))
     el.appendChild(editorRow)
 
@@ -4357,30 +4364,34 @@
       return el
     }
 
-    return ui.list({
+    // The list expects selected on `item` (the flat row). Bridge so
+    // selected.set(node.id) ⇔ flat row whose node.id matches. Proxy is
+    // pre-created so ui.list can bind to it; effects are collected on the
+    // returned list element so they stop on dispose.
+    const proxy = selected ? EF.signal(null) : null
+
+    const listEl = ui.list({
       items: flat,
       rowHeight: rowH,
       render: render,
-      selected: selected ? mapSelected(flat, selected) : null,
+      selected: proxy,
       onActivate: o.onActivate ? function (row) { o.onActivate(row.node) } : null,
     })
 
-    // The list expects selected on `item` (the flat row). Bridge so
-    // selected.set(node.id) ⇔ flat row whose node.id matches.
-    function mapSelected(flatSig, idSig) {
-      const proxy = EF.signal(null)
-      EF.effect(function () {
-        const id = idSig()
-        const arr = flatSig()
+    if (selected) {
+      ui.collect(listEl, EF.effect(function () {
+        const id = selected()
+        const arr = flat()
         const row = arr.find(function (r) { return r.node.id === id })
         if (proxy.peek() !== row) proxy.set(row)
-      })
-      EF.effect(function () {
+      }))
+      ui.collect(listEl, EF.effect(function () {
         const r = proxy()
-        if (r && idSig.peek() !== r.node.id) idSig.set(r.node.id)
-      })
-      return proxy
+        if (r && selected.peek() !== r.node.id) selected.set(r.node.id)
+      }))
     }
+
+    return listEl
   }
 })(window.EF = window.EF || {})
 

@@ -48,6 +48,7 @@
     inp.addEventListener('focus', open)
     inp.addEventListener('input', function () { sig.set(inp.value); reopen() })
     arrow.addEventListener('mousedown', function (e) { e.preventDefault(); inp.focus(); pop ? close() : open() })
+    ui.collect(wrap, close)
 
     return wrap
   }

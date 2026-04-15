@@ -28,6 +28,8 @@
       if (pop) { pop.close(); pop = null; return }
       pop = openPicker(el, sig, function () { pop = null })
     })
+    // If the widget is disposed while the picker is open, tear it down.
+    ui.collect(el, function () { if (pop) { pop.close(); pop = null } })
     return el
   }
 
@@ -63,7 +65,7 @@
       sig.set(out)
       if (document.activeElement !== hex) hex.value = out
     }
-    EF.effect(function () { sigH(); sigS(); sigV(); update() })
+    const stopEffect = EF.effect(function () { sigH(); sigS(); sigV(); update() })
 
     ui.attachDrag(sv, {
       onStart: scrubSv, onMove: scrubSv,
@@ -85,7 +87,10 @@
       if (h) { sigH.set(h.h); sigS.set(h.s); sigV.set(h.v) }
     })
 
-    return ui.popover({ anchor: anchor, content: wrap, side: 'bottom', align: 'start', onDismiss: onClose })
+    return ui.popover({
+      anchor: anchor, content: wrap, side: 'bottom', align: 'start',
+      onDismiss: function () { stopEffect(); onClose && onClose() },
+    })
   }
 
   // ── color math ─────────────────────────────────────────────────

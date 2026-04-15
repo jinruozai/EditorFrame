@@ -38,9 +38,10 @@
         row.addEventListener('click', function () { sig.set(it.value); pop && pop.close(); pop = null })
         list.appendChild(row)
       }
-      pop = ui.popover({ anchor: el, content: list, side: 'bottom', align: 'start' })
+      pop = ui.popover({ anchor: el, content: list, side: 'bottom', align: 'start', onDismiss: function () { pop = null } })
       list.style.minWidth = el.getBoundingClientRect().width + 'px'
     })
+    ui.collect(el, function () { if (pop) { pop.close(); pop = null } })
 
     return el
   }

@@ -64,12 +64,12 @@
     // Selected color editor
     const editorRow = ui.h('div', 'ef-ui-gradient-editor')
     const colorSig = EF.signal('#888888')
-    EF.effect(function () {
+    ui.collect(el, EF.effect(function () {
       const data = sig()
       const s = data.stops[selectedIdx]
       if (s) colorSig.set(s.color)
-    })
-    EF.effect(function () {
+    }))
+    ui.collect(el, EF.effect(function () {
       const c = colorSig()
       const data = sig.peek()
       const s = data.stops[selectedIdx]
@@ -78,7 +78,7 @@
         stops[selectedIdx] = { pos: s.pos, color: c }
         sig.set({ stops: stops })
       }
-    })
+    }))
     editorRow.appendChild(ui.colorInput({ value: colorSig }))
     el.appendChild(editorRow)
 

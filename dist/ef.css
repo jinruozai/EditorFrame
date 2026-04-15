@@ -2026,6 +2026,9 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(400%); }
 }
+@media (prefers-reduced-motion: reduce) {
+  .ef-ui-progress-ind .ef-ui-progress-fill { animation: none; width: 100% !important; }
+}
 .ef-ui-progress-label {
   position: absolute;
   left: 50%; top: 50%;
