@@ -350,13 +350,23 @@
 
 /* ── segmented ──────────────────────────────────────────────────── */
 .ef-ui-seg {
-  display: inline-flex;
+  display: flex;
+  align-self: flex-start;
+  max-width: 100%;
+  min-width: 0;
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-2);
   padding: 2px;
   gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ef-bg-4) transparent;
 }
+.ef-ui-seg::-webkit-scrollbar { height: 4px; }
+.ef-ui-seg::-webkit-scrollbar-thumb { background: var(--ef-bg-4); border-radius: 2px; }
+.ef-ui-seg::-webkit-scrollbar-track { background: transparent; }
 .ef-ui-seg-btn {
   display: inline-flex;
   align-items: center;
@@ -369,6 +379,7 @@
   border-radius: var(--ef-r-1);
   font: var(--ef-fs-md) var(--ef-font-ui);
   cursor: pointer;
+  flex-shrink: 0;
   white-space: nowrap;
   transition: background var(--ef-dur-fast) var(--ef-ease),
               color var(--ef-dur-fast) var(--ef-ease),

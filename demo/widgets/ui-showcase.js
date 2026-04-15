@@ -227,11 +227,33 @@
     return wrap
   }
 
+  // Demo-local JS tokenizer — shows how a caller plugs a custom highlighter
+  // into ui.codeInput. The framework bundles no language definitions.
+  const JS_KW = new Set((
+    'var let const function return if else for while do break continue class ' +
+    'extends new this super typeof instanceof in of true false null undefined ' +
+    'import export from as default async await try catch finally throw switch ' +
+    'case void delete yield'
+  ).split(' '))
+  const JS_RULES = [
+    { cls: 'c', re: /\/\/[^\n]*/y },
+    { cls: 'c', re: /\/\*[\s\S]*?\*\//y },
+    { cls: 's', re: /"(?:\\.|[^"\\\n])*"?/y },
+    { cls: 's', re: /'(?:\\.|[^'\\\n])*'?/y },
+    { cls: 's', re: /`(?:\\.|[^`\\])*`?/y },
+    { cls: 'n', re: /\b(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/y },
+    { cls: 'i', re: /[A-Za-z_$][\w$]*/y, kw: JS_KW },
+    { cls: 'p', re: /[+\-*/%=<>!&|^~?:,;.()[\]{}]/y },
+    { cls: 't', re: /\s+/y },
+    { cls: 't', re: /./y },
+  ]
+  function jsHighlight(src) { return ui.codeInput.tokenize(src, JS_RULES) }
+
   // ── EDITOR INPUTS (specialized) ───────────────────────────────────
   function buildEditor() {
     const wrap = ui.h('div')
 
-    const sCode = EF.signal('function hello() {\n  return "world"\n}')
+    const sCode = EF.signal('// caller-supplied tokenizer\nfunction hello() {\n  const n = 42\n  return `world ${n}`\n}')
     const sPath = EF.signal('/usr/local/bin/node')
     const sFile = EF.signal(null)
     const sGrad = EF.signal({
@@ -244,7 +266,7 @@
     const sCurve = EF.signal([0.42, 0, 0.58, 1])
 
     wrap.appendChild(group('Code', [
-      ui.codeInput({ value: sCode, language: 'javascript', rows: 8 }),
+      ui.codeInput({ value: sCode, language: 'js', rows: 8, highlight: jsHighlight }),
     ]))
 
     wrap.appendChild(group('Files & paths', [
@@ -257,7 +279,7 @@
     ]))
 
     wrap.appendChild(group('Curve', [
-      ui.curveInput({ value: sCurve }),
+      ui.curveInput({ value: sCurve, presets: true }),
     ]))
 
     return wrap

@@ -4,6 +4,7 @@
 .ef-ui-section {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   border-bottom: 1px solid var(--ef-border);
 }
 .ef-ui-section-head {
@@ -33,6 +34,7 @@
 .ef-ui-section-body {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding: var(--ef-space-2);
   gap: var(--ef-space-1);
 }
@@ -41,9 +43,10 @@
 /* ── propRow ────────────────────────────────────────────────────── */
 .ef-ui-prop-row {
   display: grid;
-  grid-template-columns: 80px 1fr;
+  grid-template-columns: minmax(0, 80px) minmax(0, 1fr);
   align-items: center;
   gap: var(--ef-space-2);
+  min-width: 0;
   min-height: var(--ef-size-h-md);
 }
 .ef-ui-prop-label {
@@ -55,8 +58,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ef-ui-prop-control { display: flex; min-width: 0; }
-.ef-ui-prop-control > * { flex: 1 1 auto; min-width: 0; }
+.ef-ui-prop-control { display: flex; min-width: 0; overflow: hidden; }
+.ef-ui-prop-control > * { flex: 1 1 auto; min-width: 0; max-width: 100%; }
 
 /* ── card ───────────────────────────────────────────────────────── */
 .ef-ui-card {

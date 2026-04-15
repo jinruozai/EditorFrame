@@ -446,13 +446,20 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-tabs {
   display: flex;
   flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
   align-items: stretch;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   position: relative;
+  scrollbar-width: none;           /* tabs scroll on wheel/swipe but bar is hidden */
 }
+.ef-tabs::-webkit-scrollbar { display: none; }
 .ef-tabs-vertical {
   flex-direction: column;
   align-items: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .ef-tab-icon {
   display: inline-flex;
@@ -465,6 +472,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-tab {
   position: relative;
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: var(--ef-space-1);
   padding: 0 var(--ef-space-3);
@@ -1359,13 +1367,23 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 
 /* ── segmented ──────────────────────────────────────────────────── */
 .ef-ui-seg {
-  display: inline-flex;
+  display: flex;
+  align-self: flex-start;
+  max-width: 100%;
+  min-width: 0;
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-2);
   padding: 2px;
   gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ef-bg-4) transparent;
 }
+.ef-ui-seg::-webkit-scrollbar { height: 4px; }
+.ef-ui-seg::-webkit-scrollbar-thumb { background: var(--ef-bg-4); border-radius: 2px; }
+.ef-ui-seg::-webkit-scrollbar-track { background: transparent; }
 .ef-ui-seg-btn {
   display: inline-flex;
   align-items: center;
@@ -1378,6 +1396,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   border-radius: var(--ef-r-1);
   font: var(--ef-fs-md) var(--ef-font-ui);
   cursor: pointer;
+  flex-shrink: 0;
   white-space: nowrap;
   transition: background var(--ef-dur-fast) var(--ef-ease),
               color var(--ef-dur-fast) var(--ef-ease),
@@ -1827,7 +1846,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   color: var(--ef-fg-3);
   text-transform: uppercase;
   letter-spacing: .06em;
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
 }
 .ef-ui-code-gutter {
@@ -1843,8 +1862,15 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   user-select: none;
   border-right: 1px solid var(--ef-border);
 }
+.ef-ui-code-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+  display: flex;
+}
 .ef-ui-code-text {
   flex: 1 1 auto;
+  min-width: 0;
   background: transparent;
   color: var(--ef-fg-0);
   border: 0;
@@ -1856,6 +1882,50 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   overflow: auto;
   tab-size: 2;
 }
+
+/* Highlight overlay — rendered only when opts.highlight is provided. The
+ * textarea's text becomes transparent so the colored <pre> layer shows
+ * through; the caret and selection remain on the textarea. */
+.ef-ui-code-hlmode .ef-ui-code-text {
+  position: relative;
+  z-index: 1;
+  color: transparent;
+  caret-color: var(--ef-fg-0);
+  background: transparent;
+}
+.ef-ui-code-hlmode .ef-ui-code-text::selection {
+  background: color-mix(in srgb, var(--ef-accent) 35%, transparent);
+  color: transparent;
+}
+.ef-ui-code-hl {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: var(--ef-space-2);
+  font: var(--ef-fs-sm)/var(--ef-lh-base) var(--ef-font-mono);
+  color: var(--ef-fg-0);
+  background: transparent;
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+  tab-size: 2;
+  z-index: 0;
+}
+.ef-ui-code-hl-inner {
+  display: block;
+  font: inherit;
+  color: inherit;
+  white-space: pre;
+}
+/* Token color palette — keyed off existing theme tokens so it follows
+ * light/dark mode automatically. Callers wrap tokens with these class names
+ * via the tokenize() helper (or any custom highlighter they write). */
+.ef-hl-k { color: var(--ef-accent); font-weight: 500; }     /* keyword */
+.ef-hl-i { color: var(--ef-fg-0); }                          /* ident */
+.ef-hl-s { color: var(--ef-success); }                       /* string */
+.ef-hl-n { color: var(--ef-info); }                          /* number */
+.ef-hl-c { color: var(--ef-fg-3); font-style: italic; }      /* comment */
+.ef-hl-p { color: var(--ef-fg-2); }                          /* punctuation */
 
 /* ── pathInput ──────────────────────────────────────────────────── */
 .ef-ui-path-browse {
@@ -1914,6 +1984,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-section {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   border-bottom: 1px solid var(--ef-border);
 }
 .ef-ui-section-head {
@@ -1943,6 +2014,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-section-body {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding: var(--ef-space-2);
   gap: var(--ef-space-1);
 }
@@ -1951,9 +2023,10 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 /* ── propRow ────────────────────────────────────────────────────── */
 .ef-ui-prop-row {
   display: grid;
-  grid-template-columns: 80px 1fr;
+  grid-template-columns: minmax(0, 80px) minmax(0, 1fr);
   align-items: center;
   gap: var(--ef-space-2);
+  min-width: 0;
   min-height: var(--ef-size-h-md);
 }
 .ef-ui-prop-label {
@@ -1965,8 +2038,8 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ef-ui-prop-control { display: flex; min-width: 0; }
-.ef-ui-prop-control > * { flex: 1 1 auto; min-width: 0; }
+.ef-ui-prop-control { display: flex; min-width: 0; overflow: hidden; }
+.ef-ui-prop-control > * { flex: 1 1 auto; min-width: 0; max-width: 100%; }
 
 /* ── card ───────────────────────────────────────────────────────── */
 .ef-ui-card {

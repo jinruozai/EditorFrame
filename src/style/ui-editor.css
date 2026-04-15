@@ -189,7 +189,7 @@
   color: var(--ef-fg-3);
   text-transform: uppercase;
   letter-spacing: .06em;
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
 }
 .ef-ui-code-gutter {
@@ -205,8 +205,15 @@
   user-select: none;
   border-right: 1px solid var(--ef-border);
 }
+.ef-ui-code-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+  display: flex;
+}
 .ef-ui-code-text {
   flex: 1 1 auto;
+  min-width: 0;
   background: transparent;
   color: var(--ef-fg-0);
   border: 0;
@@ -218,6 +225,50 @@
   overflow: auto;
   tab-size: 2;
 }
+
+/* Highlight overlay — rendered only when opts.highlight is provided. The
+ * textarea's text becomes transparent so the colored <pre> layer shows
+ * through; the caret and selection remain on the textarea. */
+.ef-ui-code-hlmode .ef-ui-code-text {
+  position: relative;
+  z-index: 1;
+  color: transparent;
+  caret-color: var(--ef-fg-0);
+  background: transparent;
+}
+.ef-ui-code-hlmode .ef-ui-code-text::selection {
+  background: color-mix(in srgb, var(--ef-accent) 35%, transparent);
+  color: transparent;
+}
+.ef-ui-code-hl {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: var(--ef-space-2);
+  font: var(--ef-fs-sm)/var(--ef-lh-base) var(--ef-font-mono);
+  color: var(--ef-fg-0);
+  background: transparent;
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+  tab-size: 2;
+  z-index: 0;
+}
+.ef-ui-code-hl-inner {
+  display: block;
+  font: inherit;
+  color: inherit;
+  white-space: pre;
+}
+/* Token color palette — keyed off existing theme tokens so it follows
+ * light/dark mode automatically. Callers wrap tokens with these class names
+ * via the tokenize() helper (or any custom highlighter they write). */
+.ef-hl-k { color: var(--ef-accent); font-weight: 500; }     /* keyword */
+.ef-hl-i { color: var(--ef-fg-0); }                          /* ident */
+.ef-hl-s { color: var(--ef-success); }                       /* string */
+.ef-hl-n { color: var(--ef-info); }                          /* number */
+.ef-hl-c { color: var(--ef-fg-3); font-style: italic; }      /* comment */
+.ef-hl-p { color: var(--ef-fg-2); }                          /* punctuation */
 
 /* ── pathInput ──────────────────────────────────────────────────── */
 .ef-ui-path-browse {

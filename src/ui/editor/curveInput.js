@@ -5,8 +5,9 @@
 // Features:
 //   • Responsive — canvas fills the component; ResizeObserver keeps DPR crisp.
 //   • Drag either handle to shape the curve. Hover highlights the nearest handle.
-//   • Preset chip row (Linear / Ease / In / Out / In-Out) for one-click shapes.
 //   • Grid, guide lines, accent-stroked bezier, filled handles.
+//   • Optional preset chip row via `opts.presets: true` (Linear/Ease/In/Out/In-Out).
+//     Defaults to off — the library default is the minimal curve editor.
 //
 ;(function (EF) {
   'use strict'
@@ -23,14 +24,13 @@
   ui.curveInput = function (opts) {
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value : [0.42, 0, 0.58, 1])
+    const showPresets = !!o.presets
 
-    const el      = ui.h('div', 'ef-ui-curve')
-    const cvWrap  = ui.h('div', 'ef-ui-curve-canvas-wrap')
-    const cv      = ui.h('canvas', 'ef-ui-curve-canvas')
-    const presets = ui.h('div', 'ef-ui-curve-presets')
+    const el     = ui.h('div', 'ef-ui-curve')
+    const cvWrap = ui.h('div', 'ef-ui-curve-canvas-wrap')
+    const cv     = ui.h('canvas', 'ef-ui-curve-canvas')
     cvWrap.appendChild(cv)
     el.appendChild(cvWrap)
-    el.appendChild(presets)
 
     const ctx = cv.getContext('2d')
     let cssW = 0, cssH = 0, dpr = 1
@@ -229,12 +229,16 @@
       }
     })
 
-    // Preset chips
-    PRESETS.forEach(function (p) {
-      const btn = ui.h('button', 'ef-ui-curve-preset', { type: 'button', text: p.name })
-      btn.addEventListener('click', function () { sig.set(p.v.slice()) })
-      presets.appendChild(btn)
-    })
+    // Preset chips — opt-in via opts.presets. Library default is minimal.
+    if (showPresets) {
+      const presets = ui.h('div', 'ef-ui-curve-presets')
+      PRESETS.forEach(function (p) {
+        const btn = ui.h('button', 'ef-ui-curve-preset', { type: 'button', text: p.name })
+        btn.addEventListener('click', function () { sig.set(p.v.slice()) })
+        presets.appendChild(btn)
+      })
+      el.appendChild(presets)
+    }
 
     return el
   }

@@ -28,7 +28,14 @@
       color: var(--ef-fg-1, #c4c4cc); font: inherit; cursor: pointer;
     }
     .demo-pad button:hover { background: var(--ef-bg-4, #38383f); color: var(--ef-fg-0, #fff); }
-    .demo-tag { color: var(--ef-fg-3, #72727c); font-family: monospace; margin-bottom: 8px; }
+    .demo-tag {
+      color: var(--ef-fg-3, #72727c);
+      font-family: monospace;
+      margin-bottom: 8px;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+    .demo-pad { min-width: 0; word-break: break-word; }
     .demo-canvas { background: var(--ef-bg-0, #0a0a0e); border: 1px solid var(--ef-border, #1c1c1f); border-radius: 3px;
                    width: 100%; height: 160px; display: block; }
     .demo-toolbar-btn {

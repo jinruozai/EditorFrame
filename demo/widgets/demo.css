@@ -53,13 +53,15 @@
 .demo-theme-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--ef-space-2);
   padding: var(--ef-space-2) var(--ef-space-3);
+  min-width: 0;
   border-bottom: 1px solid var(--ef-border);
   background: var(--ef-bg-2);
   flex-shrink: 0;
 }
-.demo-theme-head .ef-ui-select { min-width: 100px; }
+.demo-theme-head .ef-ui-select { min-width: 80px; flex: 1 1 80px; }
 .demo-theme-tabs {
   padding: var(--ef-space-2) var(--ef-space-3);
   border-bottom: 1px solid var(--ef-border);
