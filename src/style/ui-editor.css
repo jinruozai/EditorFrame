@@ -7,49 +7,170 @@
   gap: var(--ef-space-2);
   width: 100%;
 }
+.ef-ui-gradient-barwrap {
+  position: relative;
+  width: 100%;
+  padding-bottom: 14px; /* room for the handles' pointer tails */
+}
+.ef-ui-gradient-checker {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 24px;
+  border-radius: var(--ef-r-2);
+  background-image:
+    linear-gradient(45deg, var(--ef-bg-3) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--ef-bg-3) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--ef-bg-3) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--ef-bg-3) 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  pointer-events: none;
+}
 .ef-ui-gradient-bar {
   position: relative;
   width: 100%;
-  height: 18px;
+  height: 24px;
   border-radius: var(--ef-r-2);
   border: 1px solid var(--ef-border-strong);
   cursor: copy;
-  background: linear-gradient(to right, #000, #fff);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
 }
-.ef-ui-gradient-stops {
-  position: relative;
-  height: 12px;
-  margin-top: -2px;
+.ef-ui-gradient-rail {
+  position: absolute;
+  left: 0; right: 0;
+  top: 24px;
+  height: 14px;
 }
 .ef-ui-gradient-stop {
   position: absolute;
   top: 0;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%);
+  cursor: grab;
+  display: block;
+  transition: transform var(--ef-dur-fast) var(--ef-ease),
+              filter    var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-gradient-stop::before {
+  /* pointer triangle aiming at the bar */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid var(--ef-fg-0);
+}
+.ef-ui-gradient-stop-fill {
+  position: absolute;
+  left: 50%;
+  top: 1px;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
-  border: 2px solid var(--ef-fg-0);
+  transform: translateX(-50%);
   border-radius: 50%;
-  cursor: grab;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.5);
+  border: 2px solid var(--ef-fg-0);
+  box-shadow: 0 1px 2px rgba(0,0,0,.4);
 }
-.ef-ui-gradient-stop-active {
+.ef-ui-gradient-stop:hover { transform: translateX(-50%) translateY(-1px); }
+.ef-ui-gradient-stop-active::before { border-bottom-color: var(--ef-accent); }
+.ef-ui-gradient-stop-active .ef-ui-gradient-stop-fill {
   border-color: var(--ef-accent);
-  transform: scale(1.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ef-accent) 22%, transparent),
+              0 1px 2px rgba(0,0,0,.5);
 }
-.ef-ui-gradient-editor { display: flex; }
-
-/* ── curveInput ─────────────────────────────────────────────────── */
-.ef-ui-curve {
-  display: inline-block;
+.ef-ui-gradient-stop-dragging {
+  cursor: grabbing;
+  filter: brightness(1.1);
+}
+.ef-ui-gradient-editor {
+  display: flex;
+  align-items: center;
+  gap: var(--ef-space-2);
+}
+.ef-ui-gradient-editor > .ef-ui-color { flex: 1 1 auto; min-width: 0; }
+.ef-ui-gradient-delete {
+  flex: 0 0 auto;
+  width: var(--ef-size-h-md);
+  height: var(--ef-size-h-md);
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-2);
-  padding: 4px;
+  color: var(--ef-fg-2);
+  cursor: pointer;
+  font: var(--ef-fs-md) var(--ef-font-ui);
+  transition: background var(--ef-dur-fast) var(--ef-ease),
+              color var(--ef-dur-fast) var(--ef-ease),
+              border-color var(--ef-dur-fast) var(--ef-ease),
+              transform var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-gradient-delete:hover {
+  background: color-mix(in srgb, var(--ef-error) 18%, var(--ef-bg-2));
+  border-color: var(--ef-error);
+  color: var(--ef-error);
+}
+.ef-ui-gradient-delete:active { transform: scale(0.94); }
+
+/* ── curveInput ─────────────────────────────────────────────────── */
+.ef-ui-curve {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 180px;
+  background: var(--ef-bg-2);
+  border: 1px solid var(--ef-border-input);
+  border-radius: var(--ef-r-2);
+  padding: var(--ef-space-1);
+  gap: var(--ef-space-1);
+  box-sizing: border-box;
+}
+.ef-ui-curve-canvas-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 160px;
+  aspect-ratio: 1 / 1;
 }
 .ef-ui-curve-canvas {
+  position: absolute;
+  inset: 0;
   display: block;
+  width: 100%;
+  height: 100%;
   cursor: crosshair;
+  border-radius: var(--ef-r-1);
 }
+.ef-ui-curve-presets {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.ef-ui-curve-preset {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  padding: 0 var(--ef-space-2);
+  background: var(--ef-bg-3);
+  border: 1px solid var(--ef-border-input);
+  border-radius: var(--ef-r-1);
+  color: var(--ef-fg-2);
+  font: var(--ef-fs-xs) var(--ef-font-ui);
+  cursor: pointer;
+  transition: background var(--ef-dur-fast) var(--ef-ease),
+              color      var(--ef-dur-fast) var(--ef-ease),
+              border-color var(--ef-dur-fast) var(--ef-ease),
+              transform var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-curve-preset:hover {
+  background: var(--ef-accent-bg);
+  border-color: var(--ef-accent-soft);
+  color: var(--ef-fg-0);
+}
+.ef-ui-curve-preset:active { transform: scale(0.94); }
 
 /* ── codeInput ──────────────────────────────────────────────────── */
 .ef-ui-code {

@@ -3050,10 +3050,15 @@
 /* ════ ui/form/numberInput.js ════ */
 // EF.ui.numberInput — Blender-style numeric input with drag-to-scrub.
 //
-// • Click the value to type a number directly.
-// • Drag horizontally on the field to scrub (multiplied by `step`).
-// • Hold Shift while dragging → ×10. Hold Ctrl → ÷10.
-// • Keyboard ↑/↓ adjust by `step`.
+// Interaction model (unified pointer session):
+//   • Hover shows an ew-resize cursor on the entire control body.
+//   • Press-and-drag (pointer move ≥ 3px) → scrub, step scaled by shift/ctrl.
+//   • Press-and-release without movement on the text field → enter edit mode
+//     (the field becomes editable, value is selected).
+//   • Double-click anywhere on the body → enter edit mode.
+//   • Enter / blur commit the edit. Escape cancels.
+//   • ↑ / ↓ keys adjust by `step` while editing (and without scrubbing).
+//   • ‹ / › buttons nudge by `step`.
 //
 // opts: { value: signal<number>, min?, max?, step?, precision?, suffix?, label? }
 ;(function (EF) {
@@ -3076,6 +3081,7 @@
     const dec = ui.h('button', 'ef-ui-num-step ef-ui-num-step-l', { type: 'button', text: '‹' })
     const txt = ui.h('input', 'ef-ui-num-text', { type: 'text' })
     const inc = ui.h('button', 'ef-ui-num-step ef-ui-num-step-r', { type: 'button', text: '›' })
+    txt.readOnly = true
     el.appendChild(dec); el.appendChild(txt); el.appendChild(inc)
     if (o.suffix) {
       const sfx = ui.h('span', 'ef-ui-num-suffix', { text: o.suffix })
@@ -3093,37 +3099,80 @@
     let editing = false
     ui.bind(el, sig, function (v) { if (!editing) txt.value = fmt(v) })
 
-    txt.addEventListener('focus', function () { editing = true; txt.select() })
-    txt.addEventListener('blur',  function () { editing = false; commit(txt.value); txt.value = fmt(sig.peek()) })
+    function enterEdit() {
+      if (editing) return
+      editing = true
+      txt.readOnly = false
+      el.classList.add('ef-ui-num-editing')
+      // Focus + select on next tick so pointerup doesn't immediately deselect.
+      requestAnimationFrame(function () { txt.focus(); txt.select() })
+    }
+    function exitEdit(commitFlag) {
+      if (!editing) return
+      editing = false
+      el.classList.remove('ef-ui-num-editing')
+      if (commitFlag) commit(txt.value)
+      txt.readOnly = true
+      txt.value = fmt(sig.peek())
+    }
+
+    // Unified pointer session on the whole body. Identifies drag (scrub) vs
+    // click (→ edit if over text field).
+    const SCRUB_THRESHOLD = 3
+    el.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return
+      if (editing) return                                   // let the native input handle clicks
+      if (e.target === dec || e.target === inc) return      // nudge buttons own their clicks
+      e.preventDefault()                                    // block focus on mousedown
+      const startX = e.clientX
+      const startVal = sig.peek()
+      const targetWasText = (e.target === txt)
+      let scrubbing = false
+      try { el.setPointerCapture(e.pointerId) } catch (_) {}
+
+      function onMove(ev) {
+        const dx = ev.clientX - startX
+        if (!scrubbing) {
+          if (Math.abs(dx) < SCRUB_THRESHOLD) return
+          scrubbing = true
+          el.classList.add('ef-ui-num-scrubbing')
+        }
+        let mul = step
+        if (ev.shiftKey) mul *= 10
+        if (ev.ctrlKey || ev.metaKey) mul /= 10
+        commit(startVal + dx * mul)
+      }
+      function onUp(ev) {
+        el.removeEventListener('pointermove', onMove)
+        el.removeEventListener('pointerup', onUp)
+        el.removeEventListener('pointercancel', onUp)
+        try { el.releasePointerCapture(ev.pointerId) } catch (_) {}
+        if (scrubbing) {
+          el.classList.remove('ef-ui-num-scrubbing')
+        } else if (targetWasText) {
+          enterEdit()
+        }
+      }
+      el.addEventListener('pointermove', onMove)
+      el.addEventListener('pointerup', onUp)
+      el.addEventListener('pointercancel', onUp)
+    })
+
+    // Double-click on any body area (including label / suffix) enters edit mode.
+    el.addEventListener('dblclick', function (e) {
+      if (e.target === dec || e.target === inc) return
+      enterEdit()
+    })
+
+    txt.addEventListener('blur', function () { exitEdit(true) })
     txt.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { txt.blur() }
+      if (e.key === 'Enter')      { txt.blur() }
+      else if (e.key === 'Escape') { txt.value = fmt(sig.peek()); txt.blur() }
       else if (e.key === 'ArrowUp')   { e.preventDefault(); commit(sig.peek() + step) }
       else if (e.key === 'ArrowDown') { e.preventDefault(); commit(sig.peek() - step) }
     })
     dec.addEventListener('click', function () { commit(sig.peek() - step) })
     inc.addEventListener('click', function () { commit(sig.peek() + step) })
-
-    // Drag-to-scrub on the entire body (except buttons / typing field).
-    let scrub = null
-    ui.attachDrag(el, {
-      onStart: function (e, ctx) {
-        if (e.target === txt || e.target === dec || e.target === inc) return
-        scrub = { start: sig.peek() }
-        el.classList.add('ef-ui-num-scrubbing')
-      },
-      onMove: function (e, ctx) {
-        if (!scrub) return
-        let mul = step
-        if (e.shiftKey) mul *= 10
-        if (e.ctrlKey || e.metaKey) mul /= 10
-        commit(scrub.start + ctx.dx * mul)
-      },
-      onEnd: function () {
-        if (!scrub) return
-        scrub = null
-        el.classList.remove('ef-ui-num-scrubbing')
-      },
-    })
 
     return el
   }
@@ -3756,77 +3805,175 @@
 })(window.EF = window.EF || {})
 
 /* ════ ui/editor/gradientInput.js ════ */
-// EF.ui.gradientInput — color stop list for a linear gradient.
+// EF.ui.gradientInput — linear gradient color stop editor.
 //
-// opts:
-//   value : signal<{ stops: [{ pos: number(0..1), color: string }] }>
+// Value shape:  signal<{ stops: [{ pos: number 0..1, color: string }, ...] }>
+//
+// Interaction:
+//   • Click anywhere on the gradient bar to add a stop at that position.
+//   • Press and drag a stop handle to move it (stable — the dragged handle is
+//     never recreated mid-drag, so the pointer capture holds reliably).
+//   • Double-click a stop (or press the Delete button) to remove it.
+//     At least 2 stops are always preserved.
+//   • Selecting a stop reveals its color in the color editor below.
+//
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
   ui.gradientInput = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : { stops: [{ pos: 0, color: '#000000' }, { pos: 1, color: '#ffffff' }] })
+    const sig = ui.asSig(o.value != null ? o.value
+      : { stops: [{ pos: 0, color: '#000000' }, { pos: 1, color: '#ffffff' }] })
 
     const el = ui.h('div', 'ef-ui-gradient')
-    const bar = ui.h('div', 'ef-ui-gradient-bar')
-    const stopsLayer = ui.h('div', 'ef-ui-gradient-stops')
-    el.appendChild(bar)
-    el.appendChild(stopsLayer)
+    const barWrap = ui.h('div', 'ef-ui-gradient-barwrap')
+    const checker = ui.h('div', 'ef-ui-gradient-checker')
+    const bar     = ui.h('div', 'ef-ui-gradient-bar')
+    const rail    = ui.h('div', 'ef-ui-gradient-rail')
+    barWrap.appendChild(checker)
+    barWrap.appendChild(bar)
+    barWrap.appendChild(rail)
+    el.appendChild(barWrap)
 
+    // Local selection state (not part of the serialized value).
     let selectedIdx = 0
+    // Stable DOM handles, one per logical stop index. Re-used across updates
+    // so drag sessions survive signal rebroadcasts.
+    const handles = []
 
-    function rebuild() {
-      const data = sig.peek()
-      const css = data.stops.map(function (s) { return s.color + ' ' + (s.pos * 100).toFixed(1) + '%' }).join(', ')
+    function sortedStops(data) {
+      return data.stops.slice().sort(function (a, b) { return a.pos - b.pos })
+    }
+    function paintBar() {
+      const s = sortedStops(sig.peek())
+      const css = s.map(function (x) { return x.color + ' ' + (x.pos * 100).toFixed(2) + '%' }).join(', ')
       bar.style.background = 'linear-gradient(to right, ' + css + ')'
-      stopsLayer.replaceChildren()
-      for (let i = 0; i < data.stops.length; i++) {
-        const idx = i
-        const s = data.stops[idx]
-        const dot = ui.h('div', 'ef-ui-gradient-stop' + (idx === selectedIdx ? ' ef-ui-gradient-stop-active' : ''))
-        dot.style.left = (s.pos * 100) + '%'
-        dot.style.background = s.color
-        ui.attachDrag(dot, {
-          onStart: function (e) { e.stopPropagation(); selectedIdx = idx; rebuild() },
-          onMove: function (e) {
-            const r = bar.getBoundingClientRect()
-            const p = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
-            const next = sig.peek()
-            const stops = next.stops.slice()
-            stops[idx] = { pos: p, color: stops[idx].color }
-            sig.set({ stops: stops })
-          },
-        })
-        dot.addEventListener('dblclick', function () {
-          if (sig.peek().stops.length <= 2) return
-          const stops = sig.peek().stops.slice()
-          stops.splice(idx, 1)
-          if (selectedIdx >= stops.length) selectedIdx = stops.length - 1
+    }
+
+    function makeHandle() {
+      const h = ui.h('div', 'ef-ui-gradient-stop')
+      const fill = ui.h('div', 'ef-ui-gradient-stop-fill')
+      h.appendChild(fill)
+      h.__fill = fill
+      h.__idx = 0
+      h.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return
+        e.preventDefault()
+        e.stopPropagation()
+        const idx = h.__idx
+        selectedIdx = idx
+        syncClasses()
+        colorSig.set(sig.peek().stops[idx].color)
+        try { h.setPointerCapture(e.pointerId) } catch (_) {}
+        h.classList.add('ef-ui-gradient-stop-dragging')
+        function onMove(ev) {
+          const r = bar.getBoundingClientRect()
+          const p = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width))
+          const data = sig.peek()
+          const stops = data.stops.slice()
+          stops[idx] = { pos: p, color: stops[idx].color }
           sig.set({ stops: stops })
-        })
-        stopsLayer.appendChild(dot)
+        }
+        function onUp(ev) {
+          h.removeEventListener('pointermove', onMove)
+          h.removeEventListener('pointerup', onUp)
+          h.removeEventListener('pointercancel', onUp)
+          try { h.releasePointerCapture(ev.pointerId) } catch (_) {}
+          h.classList.remove('ef-ui-gradient-stop-dragging')
+        }
+        h.addEventListener('pointermove', onMove)
+        h.addEventListener('pointerup', onUp)
+        h.addEventListener('pointercancel', onUp)
+      })
+      h.addEventListener('dblclick', function (e) {
+        e.stopPropagation()
+        removeStop(h.__idx)
+      })
+      return h
+    }
+
+    function syncClasses() {
+      for (let i = 0; i < handles.length; i++) {
+        handles[i].classList.toggle('ef-ui-gradient-stop-active', i === selectedIdx)
       }
     }
+
+    function syncHandles() {
+      const data = sig.peek()
+      const n = data.stops.length
+      while (handles.length < n) {
+        const h = makeHandle()
+        rail.appendChild(h)
+        handles.push(h)
+      }
+      while (handles.length > n) {
+        const h = handles.pop()
+        h.remove()
+      }
+      if (selectedIdx >= n) selectedIdx = n - 1
+      for (let i = 0; i < n; i++) {
+        const s = data.stops[i]
+        const h = handles[i]
+        h.__idx = i
+        h.style.left = (s.pos * 100) + '%'
+        h.__fill.style.background = s.color
+      }
+      syncClasses()
+    }
+
+    ui.bind(el, sig, function () {
+      paintBar()
+      syncHandles()
+    })
+
     bar.addEventListener('click', function (e) {
       const r = bar.getBoundingClientRect()
-      const p = (e.clientX - r.left) / r.width
-      const stops = sig.peek().stops.slice()
-      stops.push({ pos: p, color: '#888888' })
-      stops.sort(function (a, b) { return a.pos - b.pos })
-      selectedIdx = stops.findIndex(function (s) { return s.pos === p })
+      const p = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
+      const data = sig.peek()
+      // Sample neighbor colors for a pleasant initial color.
+      const sorted = sortedStops(data)
+      let color = '#888888'
+      for (let i = 0; i < sorted.length - 1; i++) {
+        if (p >= sorted[i].pos && p <= sorted[i + 1].pos) {
+          const t = (p - sorted[i].pos) / Math.max(1e-6, sorted[i + 1].pos - sorted[i].pos)
+          color = mixHex(sorted[i].color, sorted[i + 1].color, t)
+          break
+        }
+      }
+      const stops = data.stops.slice()
+      stops.push({ pos: p, color: color })
+      selectedIdx = stops.length - 1
       sig.set({ stops: stops })
     })
-    ui.bind(el, sig, rebuild)
+    rail.addEventListener('click', function (e) { e.stopPropagation() })
 
-    // Selected color editor
-    const editorRow = ui.h('div', 'ef-ui-gradient-editor')
-    const colorSig = EF.signal('#888888')
+    function removeStop(idx) {
+      const data = sig.peek()
+      if (data.stops.length <= 2) return
+      const stops = data.stops.slice()
+      stops.splice(idx, 1)
+      if (selectedIdx >= stops.length) selectedIdx = stops.length - 1
+      sig.set({ stops: stops })
+    }
+
+    // ── Color editor row ─────────────────────────────────────────
+    const colorSig = EF.signal(sig.peek().stops[selectedIdx].color)
+
+    // Parent → local: when the selected stop's color changes externally or
+    // the selection moves, pull the active color into colorSig.
+    let lastKey = ''
     ui.collect(el, EF.effect(function () {
       const data = sig()
-      const s = data.stops[selectedIdx]
-      if (s) colorSig.set(s.color)
+      const i = Math.min(selectedIdx, data.stops.length - 1)
+      const s = data.stops[i]
+      const key = i + ':' + s.color
+      if (key !== lastKey) {
+        lastKey = key
+        if (colorSig.peek() !== s.color) colorSig.set(s.color)
+      }
     }))
+    // Local → parent: editing colorSig writes back to the selected stop.
     ui.collect(el, EF.effect(function () {
       const c = colorSig()
       const data = sig.peek()
@@ -3837,120 +3984,277 @@
         sig.set({ stops: stops })
       }
     }))
+
+    const editorRow = ui.h('div', 'ef-ui-gradient-editor')
     editorRow.appendChild(ui.colorInput({ value: colorSig }))
+    const delBtn = ui.h('button', 'ef-ui-gradient-delete', {
+      type: 'button', text: '✕', title: 'Delete stop (double-click a stop)',
+    })
+    delBtn.addEventListener('click', function () { removeStop(selectedIdx) })
+    editorRow.appendChild(delBtn)
     el.appendChild(editorRow)
 
     return el
   }
+
+  // Linear RGB mix between two 6-digit hex colors.
+  function mixHex(a, b, t) {
+    const pa = parseHex(a), pb = parseHex(b)
+    if (!pa || !pb) return a
+    const r = Math.round(pa[0] + (pb[0] - pa[0]) * t)
+    const g = Math.round(pa[1] + (pb[1] - pa[1]) * t)
+    const bl = Math.round(pa[2] + (pb[2] - pa[2]) * t)
+    return '#' + hex2(r) + hex2(g) + hex2(bl)
+  }
+  function parseHex(s) {
+    if (!s) return null
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s)
+    if (!m) return null
+    let h = m[1]
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2]
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]
+  }
+  function hex2(n) { return ('0' + Math.max(0, Math.min(255, n)).toString(16)).slice(-2) }
 })(window.EF = window.EF || {})
 
 /* ════ ui/editor/curveInput.js ════ */
 // EF.ui.curveInput — animation/easing curve editor (cubic bezier 4-pt).
 //
-// opts:
-//   value : signal<[x1, y1, x2, y2]>  (control points in [0,1] like CSS bezier)
-//   width?, height?
+// Value : signal<[x1, y1, x2, y2]>  (control points in [0,1] like CSS bezier).
+//
+// Features:
+//   • Responsive — canvas fills the component; ResizeObserver keeps DPR crisp.
+//   • Drag either handle to shape the curve. Hover highlights the nearest handle.
+//   • Preset chip row (Linear / Ease / In / Out / In-Out) for one-click shapes.
+//   • Grid, guide lines, accent-stroked bezier, filled handles.
+//
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
+  const PRESETS = [
+    { name: 'Linear',  v: [0.00, 0.00, 1.00, 1.00] },
+    { name: 'Ease',    v: [0.25, 0.10, 0.25, 1.00] },
+    { name: 'In',      v: [0.42, 0.00, 1.00, 1.00] },
+    { name: 'Out',     v: [0.00, 0.00, 0.58, 1.00] },
+    { name: 'In-Out',  v: [0.42, 0.00, 0.58, 1.00] },
+  ]
+
   ui.curveInput = function (opts) {
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value : [0.42, 0, 0.58, 1])
-    const W = o.width  || 200
-    const H = o.height || 140
 
-    const el = ui.h('div', 'ef-ui-curve')
-    const cv = ui.h('canvas', 'ef-ui-curve-canvas')
-    cv.width = W; cv.height = H
-    cv.style.width  = W + 'px'
-    cv.style.height = H + 'px'
-    el.appendChild(cv)
+    const el      = ui.h('div', 'ef-ui-curve')
+    const cvWrap  = ui.h('div', 'ef-ui-curve-canvas-wrap')
+    const cv      = ui.h('canvas', 'ef-ui-curve-canvas')
+    const presets = ui.h('div', 'ef-ui-curve-presets')
+    cvWrap.appendChild(cv)
+    el.appendChild(cvWrap)
+    el.appendChild(presets)
+
     const ctx = cv.getContext('2d')
+    let cssW = 0, cssH = 0, dpr = 1
+    let hoverIdx = -1
+    let dragIdx  = -1
 
-    function getCss(name) {
-      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#7b6ef6'
+    function getCss(name, fallback) {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+      return v || fallback
     }
 
+    // Geometry ─ maps normalized [0,1] → pixel space with generous padding
+    // so the handles sit inside the canvas and never clip at the edges.
+    function geom() {
+      const PAD = 16
+      return {
+        PAD: PAD,
+        iw: cssW - PAD * 2,
+        ih: cssH - PAD * 2,
+      }
+    }
+    function map(g, x, y) { return [g.PAD + x * g.iw, g.PAD + (1 - y) * g.ih] }
+
     function draw() {
+      if (cssW <= 0 || cssH <= 0) return
       const v = sig.peek()
-      const PAD = 12
-      const innerW = W - PAD * 2
-      const innerH = H - PAD * 2
+      const g = geom()
 
-      ctx.clearRect(0, 0, W, H)
+      ctx.clearRect(0, 0, cssW, cssH)
 
-      // grid
-      ctx.strokeStyle = getCss('--ef-border')
+      // backdrop
+      ctx.fillStyle = getCss('--ef-bg-1', '#1a1a1f')
+      ctx.fillRect(g.PAD, g.PAD, g.iw, g.ih)
+
+      // grid (quarter lines)
+      ctx.strokeStyle = getCss('--ef-border', '#2a2a30')
       ctx.lineWidth = 1
-      ctx.strokeRect(PAD + .5, PAD + .5, innerW, innerH)
       ctx.beginPath()
       for (let i = 1; i < 4; i++) {
-        ctx.moveTo(PAD + (innerW * i / 4), PAD)
-        ctx.lineTo(PAD + (innerW * i / 4), PAD + innerH)
-        ctx.moveTo(PAD,             PAD + (innerH * i / 4))
-        ctx.lineTo(PAD + innerW,    PAD + (innerH * i / 4))
+        const gx = g.PAD + (g.iw * i / 4) + 0.5
+        const gy = g.PAD + (g.ih * i / 4) + 0.5
+        ctx.moveTo(gx, g.PAD);         ctx.lineTo(gx, g.PAD + g.ih)
+        ctx.moveTo(g.PAD, gy);         ctx.lineTo(g.PAD + g.iw, gy)
       }
       ctx.stroke()
+      // bounding frame
+      ctx.strokeStyle = getCss('--ef-border-strong', '#3a3a42')
+      ctx.strokeRect(g.PAD + 0.5, g.PAD + 0.5, g.iw, g.ih)
 
-      function map(x, y) { return [PAD + x * innerW, PAD + (1 - y) * innerH] }
+      // diagonal reference (linear curve, dimmed)
+      ctx.strokeStyle = getCss('--ef-fg-3', '#55555f')
+      ctx.setLineDash([3, 4])
+      ctx.beginPath()
+      ctx.moveTo(g.PAD, g.PAD + g.ih)
+      ctx.lineTo(g.PAD + g.iw, g.PAD)
+      ctx.stroke()
+      ctx.setLineDash([])
 
-      const p0 = map(0, 0)
-      const p1 = map(v[0], v[1])
-      const p2 = map(v[2], v[3])
-      const p3 = map(1, 1)
+      const p0 = map(g, 0, 0)
+      const p1 = map(g, v[0], v[1])
+      const p2 = map(g, v[2], v[3])
+      const p3 = map(g, 1, 1)
 
-      // handle lines
-      ctx.strokeStyle = getCss('--ef-fg-3')
+      // handle guide lines
+      ctx.strokeStyle = getCss('--ef-fg-3', '#55555f')
+      ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1])
       ctx.moveTo(p3[0], p3[1]); ctx.lineTo(p2[0], p2[1])
       ctx.stroke()
 
-      // bezier
-      ctx.strokeStyle = getCss('--ef-accent')
-      ctx.lineWidth = 2
+      // bezier curve — glow pass + main stroke
+      const accent = getCss('--ef-accent', '#7b6ef6')
+      ctx.save()
+      ctx.shadowColor = accent
+      ctx.shadowBlur = 8
+      ctx.strokeStyle = accent
+      ctx.lineWidth = 2.5
+      ctx.lineCap = 'round'
       ctx.beginPath()
       ctx.moveTo(p0[0], p0[1])
       ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
       ctx.stroke()
+      ctx.restore()
 
-      // handles
-      ctx.fillStyle = getCss('--ef-accent')
-      ;[p1, p2].forEach(function (p) {
-        ctx.beginPath(); ctx.arc(p[0], p[1], 5, 0, Math.PI * 2); ctx.fill()
+      // endpoint dots
+      ctx.fillStyle = getCss('--ef-fg-2', '#8a8a95')
+      ;[p0, p3].forEach(function (p) {
+        ctx.beginPath(); ctx.arc(p[0], p[1], 3, 0, Math.PI * 2); ctx.fill()
+      })
+
+      // control handles
+      ;[p1, p2].forEach(function (p, i) {
+        const active = (i === dragIdx) || (i === hoverIdx && dragIdx < 0)
+        const r = active ? 7 : 5
+        if (active) {
+          ctx.save()
+          ctx.globalAlpha = 0.22
+          ctx.fillStyle = accent
+          ctx.beginPath(); ctx.arc(p[0], p[1], r + 5, 0, Math.PI * 2); ctx.fill()
+          ctx.restore()
+        }
+        ctx.fillStyle = accent
+        ctx.strokeStyle = getCss('--ef-fg-0', '#f0f0f5')
+        ctx.lineWidth = 2
+        ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, Math.PI * 2)
+        ctx.fill(); ctx.stroke()
       })
     }
 
-    ui.bind(el, sig, draw)
-
-    let dragIdx = -1
-    cv.addEventListener('pointerdown', function (e) {
-      const r = cv.getBoundingClientRect()
-      const PAD = 12
-      const innerW = W - PAD * 2, innerH = H - PAD * 2
+    function hit(px, py) {
+      const g = geom()
       const v = sig.peek()
-      const px = e.clientX - r.left, py = e.clientY - r.top
-      const p1 = [PAD + v[0] * innerW, PAD + (1 - v[1]) * innerH]
-      const p2 = [PAD + v[2] * innerW, PAD + (1 - v[3]) * innerH]
+      const p1 = map(g, v[0], v[1])
+      const p2 = map(g, v[2], v[3])
       const d1 = (px - p1[0]) ** 2 + (py - p1[1]) ** 2
       const d2 = (px - p2[0]) ** 2 + (py - p2[1]) ** 2
-      dragIdx = (d1 < d2) ? 0 : 1
-      cv.setPointerCapture(e.pointerId)
-    })
+      const best = d1 < d2 ? 0 : 1
+      const bestD = Math.min(d1, d2)
+      return bestD < 324 ? best : -1   // 18² radius around handle
+    }
+
+    function resize() {
+      const rect = cvWrap.getBoundingClientRect()
+      cssW = Math.max(0, Math.round(rect.width))
+      cssH = Math.max(0, Math.round(rect.height))
+      dpr = window.devicePixelRatio || 1
+      cv.width  = Math.round(cssW * dpr)
+      cv.height = Math.round(cssH * dpr)
+      cv.style.width  = cssW + 'px'
+      cv.style.height = cssH + 'px'
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      draw()
+    }
+
+    const ro = new ResizeObserver(resize)
+    ro.observe(cvWrap)
+    ui.collect(el, function () { ro.disconnect() })
+
+    ui.bind(el, sig, draw)
+
+    // Unified pointer session: move = hover + drag, down = capture + drag.
     cv.addEventListener('pointermove', function (e) {
-      if (dragIdx < 0) return
       const r = cv.getBoundingClientRect()
-      const PAD = 12
-      const innerW = W - PAD * 2, innerH = H - PAD * 2
-      const x = Math.max(0, Math.min(1, (e.clientX - r.left - PAD) / innerW))
-      const y = Math.max(-.5, Math.min(1.5, 1 - (e.clientY - r.top - PAD) / innerH))
-      const v = sig.peek().slice()
-      v[dragIdx * 2]     = x
-      v[dragIdx * 2 + 1] = y
-      sig.set(v)
+      const px = e.clientX - r.left, py = e.clientY - r.top
+      if (dragIdx >= 0) {
+        const g = geom()
+        const x = Math.max(0, Math.min(1, (px - g.PAD) / g.iw))
+        const y = Math.max(-0.5, Math.min(1.5, 1 - (py - g.PAD) / g.ih))
+        const v = sig.peek().slice()
+        v[dragIdx * 2]     = x
+        v[dragIdx * 2 + 1] = y
+        sig.set(v)
+      } else {
+        const h = hit(px, py)
+        if (h !== hoverIdx) {
+          hoverIdx = h
+          cv.style.cursor = h >= 0 ? 'grab' : 'crosshair'
+          draw()
+        }
+      }
     })
-    cv.addEventListener('pointerup', function () { dragIdx = -1 })
+    cv.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return
+      const r = cv.getBoundingClientRect()
+      const px = e.clientX - r.left, py = e.clientY - r.top
+      const h = hit(px, py)
+      // If pressed in empty space, grab the nearest handle anyway (Blender-ish).
+      dragIdx = h >= 0 ? h : nearest(px, py)
+      hoverIdx = dragIdx
+      cv.style.cursor = 'grabbing'
+      try { cv.setPointerCapture(e.pointerId) } catch (_) {}
+      draw()
+    })
+    function nearest(px, py) {
+      const g = geom()
+      const v = sig.peek()
+      const p1 = map(g, v[0], v[1])
+      const p2 = map(g, v[2], v[3])
+      return ((px - p1[0]) ** 2 + (py - p1[1]) ** 2) < ((px - p2[0]) ** 2 + (py - p2[1]) ** 2) ? 0 : 1
+    }
+    function endDrag(e) {
+      if (dragIdx < 0) return
+      dragIdx = -1
+      cv.style.cursor = hoverIdx >= 0 ? 'grab' : 'crosshair'
+      try { cv.releasePointerCapture(e.pointerId) } catch (_) {}
+      draw()
+    }
+    cv.addEventListener('pointerup', endDrag)
+    cv.addEventListener('pointercancel', endDrag)
+    cv.addEventListener('pointerleave', function () {
+      if (dragIdx < 0 && hoverIdx !== -1) {
+        hoverIdx = -1
+        cv.style.cursor = 'crosshair'
+        draw()
+      }
+    })
+
+    // Preset chips
+    PRESETS.forEach(function (p) {
+      const btn = ui.h('button', 'ef-ui-curve-preset', { type: 'button', text: p.name })
+      btn.addEventListener('click', function () { sig.set(p.v.slice()) })
+      presets.appendChild(btn)
+    })
 
     return el
   }

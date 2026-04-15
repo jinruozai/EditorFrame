@@ -478,8 +478,10 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   cursor: pointer;
   white-space: nowrap;
   transition: background var(--ef-dur-fast) var(--ef-ease),
-              color      var(--ef-dur-fast) var(--ef-ease);
+              color      var(--ef-dur-fast) var(--ef-ease),
+              transform  var(--ef-dur-fast) var(--ef-ease);
 }
+.ef-tab:active { transform: scale(0.96); }
 .ef-tab::after {
   content: '';
   position: absolute;
@@ -1125,14 +1127,24 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   font: var(--ef-fs-md) var(--ef-font-mono);
   color: var(--ef-fg-0);
   padding: 0 var(--ef-space-1);
-  cursor: text;
+  cursor: ew-resize;
+  user-select: none;
 }
 .ef-ui-num-suffix {
   padding: 0 var(--ef-space-1);
   color: var(--ef-fg-2);
   font: var(--ef-fs-sm) var(--ef-font-ui);
+  cursor: ew-resize;
 }
-.ef-ui-num-scrubbing .ef-ui-num-text { background: var(--ef-accent-bg); }
+.ef-ui-num-label { cursor: ew-resize; }
+.ef-ui-num-scrubbing { background: var(--ef-accent-bg); }
+.ef-ui-num-scrubbing .ef-ui-num-text { cursor: ew-resize; }
+.ef-ui-num-editing .ef-ui-num-text {
+  cursor: text;
+  user-select: text;
+  background: var(--ef-bg-1);
+}
+.ef-ui-num-editing { background: var(--ef-bg-1); }
 
 /* ── vectorInput ────────────────────────────────────────────────── */
 .ef-ui-vec {
@@ -1153,7 +1165,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-slider-track {
   flex: 1 1 auto;
   position: relative;
-  height: 6px;
+  height: 4px;
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-pill);
@@ -1168,24 +1180,26 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-slider-thumb {
   position: absolute;
   top: 50%;
+  left: 0;
   width: 14px; height: 14px;
-  margin-left: -7px;
-  margin-top: -7px;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
   background: var(--ef-fg-0);
   border: 2px solid var(--ef-accent);
   border-radius: 50%;
   box-shadow: var(--ef-shadow-1), 0 0 0 0 color-mix(in srgb, var(--ef-accent) 30%, transparent);
   cursor: grab;
-  transition: transform var(--ef-dur-fast) var(--ef-ease),
+  transition: width var(--ef-dur-fast) var(--ef-ease),
+              height var(--ef-dur-fast) var(--ef-ease),
               box-shadow var(--ef-dur-med) var(--ef-ease);
 }
 .ef-ui-slider-track:hover .ef-ui-slider-thumb {
-  transform: scale(1.15);
+  width: 16px; height: 16px;
   box-shadow: var(--ef-shadow-2), 0 0 0 4px color-mix(in srgb, var(--ef-accent) 18%, transparent);
 }
 .ef-ui-slider-thumb:active {
   cursor: grabbing;
-  transform: scale(1.25);
+  width: 18px; height: 18px;
   box-shadow: var(--ef-shadow-2), 0 0 0 6px color-mix(in srgb, var(--ef-accent) 24%, transparent);
 }
 .ef-ui-slider-value {
@@ -1316,10 +1330,10 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.ef-ui-radio-dot {
   transition: border-color var(--ef-dur-fast) var(--ef-ease),
-              box-shadow var(--ef-dur-med) var(--ef-ease);
+              background   var(--ef-dur-fast) var(--ef-ease),
+              transform    var(--ef-dur-fast) var(--ef-ease),
+              box-shadow   var(--ef-dur-med) var(--ef-ease);
 }
 .ef-ui-radio-dot::after {
   content: '';
@@ -1329,11 +1343,18 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   transform: scale(0);
   transition: transform var(--ef-dur-med) cubic-bezier(.34,1.56,.64,1);
 }
-.ef-ui-radio:hover .ef-ui-radio-dot { border-color: var(--ef-accent-soft); }
+.ef-ui-radio:hover .ef-ui-radio-dot {
+  border-color: var(--ef-accent-soft);
+  transform: scale(1.08);
+}
+.ef-ui-radio:active .ef-ui-radio-dot { transform: scale(0.92); }
 .ef-ui-radio-box:checked + .ef-ui-radio-dot::after { transform: scale(1); }
-.ef-ui-radio-box:checked + .ef-ui-radio-dot { border-color: var(--ef-accent); }
+.ef-ui-radio-box:checked + .ef-ui-radio-dot {
+  border-color: var(--ef-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ef-accent) 14%, transparent);
+}
 .ef-ui-radio-box:focus-visible + .ef-ui-radio-dot {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ef-accent) 32%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ef-accent) 32%, transparent);
 }
 
 /* ── segmented ──────────────────────────────────────────────────── */
@@ -1554,7 +1575,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-enum {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 4px;
 }
 .ef-ui-enum-btn {
   height: var(--ef-size-h-sm);
@@ -1565,12 +1586,32 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   color: var(--ef-fg-2);
   font: var(--ef-fs-sm) var(--ef-font-ui);
   cursor: pointer;
+  transition: background var(--ef-dur-fast) var(--ef-ease),
+              border-color var(--ef-dur-fast) var(--ef-ease),
+              color var(--ef-dur-fast) var(--ef-ease),
+              transform var(--ef-dur-fast) var(--ef-ease),
+              box-shadow var(--ef-dur-med) var(--ef-ease);
 }
-.ef-ui-enum-btn:hover { border-color: var(--ef-border-strong); color: var(--ef-fg-0); }
+.ef-ui-enum-btn:hover:not(.ef-ui-enum-on) {
+  background: var(--ef-bg-3);
+  border-color: var(--ef-c-07);
+  color: var(--ef-fg-0);
+}
+.ef-ui-enum-btn:active { transform: scale(0.94); }
 .ef-ui-enum-on {
-  background: var(--ef-accent-bg);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ef-accent) 28%, var(--ef-bg-2)) 0%,
+    var(--ef-accent-bg) 100%);
   color: var(--ef-fg-0);
   border-color: var(--ef-accent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ef-accent) 50%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--ef-accent) 14%, transparent);
+}
+.ef-ui-enum-on:hover {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ef-accent) 36%, var(--ef-bg-2)) 0%,
+    color-mix(in srgb, var(--ef-accent-bg) 85%, var(--ef-fg-0)) 100%);
 }
 
 /* ── tagInput ───────────────────────────────────────────────────── */
@@ -1604,49 +1645,170 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   gap: var(--ef-space-2);
   width: 100%;
 }
+.ef-ui-gradient-barwrap {
+  position: relative;
+  width: 100%;
+  padding-bottom: 14px; /* room for the handles' pointer tails */
+}
+.ef-ui-gradient-checker {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 24px;
+  border-radius: var(--ef-r-2);
+  background-image:
+    linear-gradient(45deg, var(--ef-bg-3) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--ef-bg-3) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--ef-bg-3) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--ef-bg-3) 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  pointer-events: none;
+}
 .ef-ui-gradient-bar {
   position: relative;
   width: 100%;
-  height: 18px;
+  height: 24px;
   border-radius: var(--ef-r-2);
   border: 1px solid var(--ef-border-strong);
   cursor: copy;
-  background: linear-gradient(to right, #000, #fff);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
 }
-.ef-ui-gradient-stops {
-  position: relative;
-  height: 12px;
-  margin-top: -2px;
+.ef-ui-gradient-rail {
+  position: absolute;
+  left: 0; right: 0;
+  top: 24px;
+  height: 14px;
 }
 .ef-ui-gradient-stop {
   position: absolute;
   top: 0;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%);
+  cursor: grab;
+  display: block;
+  transition: transform var(--ef-dur-fast) var(--ef-ease),
+              filter    var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-gradient-stop::before {
+  /* pointer triangle aiming at the bar */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid var(--ef-fg-0);
+}
+.ef-ui-gradient-stop-fill {
+  position: absolute;
+  left: 50%;
+  top: 1px;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
-  border: 2px solid var(--ef-fg-0);
+  transform: translateX(-50%);
   border-radius: 50%;
-  cursor: grab;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.5);
+  border: 2px solid var(--ef-fg-0);
+  box-shadow: 0 1px 2px rgba(0,0,0,.4);
 }
-.ef-ui-gradient-stop-active {
+.ef-ui-gradient-stop:hover { transform: translateX(-50%) translateY(-1px); }
+.ef-ui-gradient-stop-active::before { border-bottom-color: var(--ef-accent); }
+.ef-ui-gradient-stop-active .ef-ui-gradient-stop-fill {
   border-color: var(--ef-accent);
-  transform: scale(1.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ef-accent) 22%, transparent),
+              0 1px 2px rgba(0,0,0,.5);
 }
-.ef-ui-gradient-editor { display: flex; }
-
-/* ── curveInput ─────────────────────────────────────────────────── */
-.ef-ui-curve {
-  display: inline-block;
+.ef-ui-gradient-stop-dragging {
+  cursor: grabbing;
+  filter: brightness(1.1);
+}
+.ef-ui-gradient-editor {
+  display: flex;
+  align-items: center;
+  gap: var(--ef-space-2);
+}
+.ef-ui-gradient-editor > .ef-ui-color { flex: 1 1 auto; min-width: 0; }
+.ef-ui-gradient-delete {
+  flex: 0 0 auto;
+  width: var(--ef-size-h-md);
+  height: var(--ef-size-h-md);
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-2);
-  padding: 4px;
+  color: var(--ef-fg-2);
+  cursor: pointer;
+  font: var(--ef-fs-md) var(--ef-font-ui);
+  transition: background var(--ef-dur-fast) var(--ef-ease),
+              color var(--ef-dur-fast) var(--ef-ease),
+              border-color var(--ef-dur-fast) var(--ef-ease),
+              transform var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-gradient-delete:hover {
+  background: color-mix(in srgb, var(--ef-error) 18%, var(--ef-bg-2));
+  border-color: var(--ef-error);
+  color: var(--ef-error);
+}
+.ef-ui-gradient-delete:active { transform: scale(0.94); }
+
+/* ── curveInput ─────────────────────────────────────────────────── */
+.ef-ui-curve {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 180px;
+  background: var(--ef-bg-2);
+  border: 1px solid var(--ef-border-input);
+  border-radius: var(--ef-r-2);
+  padding: var(--ef-space-1);
+  gap: var(--ef-space-1);
+  box-sizing: border-box;
+}
+.ef-ui-curve-canvas-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 160px;
+  aspect-ratio: 1 / 1;
 }
 .ef-ui-curve-canvas {
+  position: absolute;
+  inset: 0;
   display: block;
+  width: 100%;
+  height: 100%;
   cursor: crosshair;
+  border-radius: var(--ef-r-1);
 }
+.ef-ui-curve-presets {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.ef-ui-curve-preset {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  padding: 0 var(--ef-space-2);
+  background: var(--ef-bg-3);
+  border: 1px solid var(--ef-border-input);
+  border-radius: var(--ef-r-1);
+  color: var(--ef-fg-2);
+  font: var(--ef-fs-xs) var(--ef-font-ui);
+  cursor: pointer;
+  transition: background var(--ef-dur-fast) var(--ef-ease),
+              color      var(--ef-dur-fast) var(--ef-ease),
+              border-color var(--ef-dur-fast) var(--ef-ease),
+              transform var(--ef-dur-fast) var(--ef-ease);
+}
+.ef-ui-curve-preset:hover {
+  background: var(--ef-accent-bg);
+  border-color: var(--ef-accent-soft);
+  color: var(--ef-fg-0);
+}
+.ef-ui-curve-preset:active { transform: scale(0.94); }
 
 /* ── codeInput ──────────────────────────────────────────────────── */
 .ef-ui-code {

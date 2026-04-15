@@ -81,8 +81,10 @@
   cursor: pointer;
   white-space: nowrap;
   transition: background var(--ef-dur-fast) var(--ef-ease),
-              color      var(--ef-dur-fast) var(--ef-ease);
+              color      var(--ef-dur-fast) var(--ef-ease),
+              transform  var(--ef-dur-fast) var(--ef-ease);
 }
+.ef-tab:active { transform: scale(0.96); }
 .ef-tab::after {
   content: '';
   position: absolute;
