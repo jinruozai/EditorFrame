@@ -132,7 +132,10 @@ doc/
 
 **主题 / 配置**:
 - `src/style/theme.css` 三层 token:原子色 → 角色色 → 组件 token
-- 暗 / 亮两套预设(`documentElement[data-ef-theme="light"]`)
+- 三套内置主题(`documentElement[data-ef-theme]` 切换):
+  - **Dark(默认,无属性)** —— Godot Minimal 风:`#272727` 中性炭灰 + `#569eff` 冷蓝 accent,"inset 输入框"(字段比面板更深)
+  - **Dracula**(`data-ef-theme="dracula"`) —— 更冷调的深灰 + `#7b6ef6` 紫,"raised 输入框"(字段比面板更亮)+ 更深阴影
+  - **Light**(`data-ef-theme="light"`) —— 白面板 + 浅灰 inset 字段 + `#5b4ee0` 深紫 accent
 - 所有可调数值(drag 阈值、动画时长、z-index、图标字符)都是 `--ef-*` CSS 变量。JS 侧通过 `EF.ui.readNum(name, fallback)` 读取,换主题 / 换图标集只改 theme.css 一份
 
 ---

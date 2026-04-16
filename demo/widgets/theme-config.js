@@ -98,9 +98,11 @@
     const o = readPersisted()
     for (const k in o) document.documentElement.style.setProperty(k, o[k])
   }
+  // 'dark' is the implicit default (no attribute); any other mode sets
+  // data-ef-theme=<mode> for the theme.css rule to key off.
   function applyThemeMode(mode) {
-    if (mode === 'light') document.documentElement.setAttribute('data-ef-theme', 'light')
-    else document.documentElement.removeAttribute('data-ef-theme')
+    if (mode === 'dark') document.documentElement.removeAttribute('data-ef-theme')
+    else document.documentElement.setAttribute('data-ef-theme', mode)
     localStorage.setItem(THEME_KEY, mode)
   }
   function pxNum(s) {
@@ -191,8 +193,9 @@
       const modeSel = ui.select({
         value: modeSig,
         options: [
-          { value: 'dark',  label: 'Dark' },
-          { value: 'light', label: 'Light' },
+          { value: 'dark',    label: 'Dark' },
+          { value: 'dracula', label: 'Dracula' },
+          { value: 'light',   label: 'Light' },
         ],
       })
       // On mode flip we wipe persisted token overrides too. Rationale:

@@ -144,7 +144,7 @@ editor-frame/
       migrate.js                   # 跨窗口 BroadcastChannel 协议 + serialize/deserialize
       layout.js                    # createDockLayout 入口胶水 + LayoutHandle(含 promotePanel)
     style/
-      theme.css                    # 三层 token(原子色 → 角色 → 组件)+ 暗/亮主题
+      theme.css                    # 三层 token(原子色 → 角色 → 组件)+ dark(Godot)/dracula/light 三主题
       dock.css / widget.css        # 框架自己的 dock + tab + toolbar 样式
       ui-base.css / ui-form.css / ui-editor.css / ui-container.css / ui-data.css / ui-overlay.css
     ui/                            # ⭐ UI 组件库(EF.ui.* 命名空间),按类别分目录
@@ -208,7 +208,11 @@ editor-frame/
 **主题系统**:
 - `src/style/theme.css` 三层 token:Layer 1 原子(`--ef-c-00..11` + 4 个语义色)→ Layer 2 角色(`--ef-bg-N` / `--ef-fg-N` / `--ef-border*` / `--ef-accent*`) → Layer 3 组件(`--ef-toolbar-h` 之类极少数特例)
 - 派生半透明色统一用 `color-mix(in srgb, var(--ef-c-XX) NN%, transparent)`
-- `:root[data-ef-theme="light"]` 只覆盖 Layer 1 + 个别 Layer 2 mapping,Layer 3 不动
+- **三套内置主题**,通过 `:root[data-ef-theme=...]` 切换(缺省属性 = dark):
+  - **dark(默认)** —— Godot Minimal 风:`#272727` 中性炭灰 ramp,`#569eff` 冷蓝 accent,"inset 输入框"角色映射(`--ef-bg-2` 比 `--ef-bg-1` 深)
+  - **dracula** —— 冷调深灰 + `#7b6ef6` 紫 accent,"raised 输入框"映射(`--ef-bg-2` 比 `--ef-bg-1` 亮) + 更强阴影
+  - **light** —— 白面板 + 浅灰 inset 字段 + `#5b4ee0` 深紫 accent;显式锁定 bg/border 角色映射,不继承 :root 的"inset in dark"约定
+- 每个非默认主题块都**显式声明**自己的 bg/border 角色映射 + shadow 级别 —— 因为 :root 的 Godot"inset input"约定不是中性默认,被光亮 primitives 继承会反过来变成"raised in light"。三套各自独立锁定,零耦合
 - 用户 demo 的 theme-config widget 通过 `documentElement.style.setProperty` 写 token,localStorage 持久化
 
 **UX 微交互(2026-04-15 那一轮专门打磨)**:
@@ -1017,6 +1021,23 @@ editorframe/
     - preview 实测:4 个 toast kind 的 `::before` content 肉眼 + `getComputedStyle` 双验通过(ⓘ/✓/⚠/⨯);`portalRoot().style.zIndex` 内联 = `var(--ef-z-popover)`,computed = 1000;`ui.readNum('--ef-dur-slow')` = 240;控制台零报错
     - **架构意义**:单一存储(CSS tokens)+ 判据收敛(只有一个问题:"JS 要不要对这个值做运算",不做 → `var()`/`calc()`/`content: var()`,做 → `ui.readNum`)+ 零 JS 映射表 —— 换主题/换图标集/换触控尺寸,全部只改 theme.css 一份
     - **2026-04-16 晚些时候**补完 § 8 时间线(本 item)、写了项目 README.md、推 Gitee
+
+14. **内置主题扩到三套,默认改 Godot Minimal 风**(2026-04-16 当晚):
+    - 缘起:用户指出"原先 dark 主题其实带冷蓝 + 紫,叫 dark 不合适",要求按 [passivestar/godot-minimal-theme](https://github.com/passivestar/godot-minimal-theme) 的配色重做默认 dark,老默认搬到 `Dracula` 名下
+    - 通过 WebFetch 直接读 `minimal_theme.tres` 拿到官方**字面值**(非主观调色):surface_base `#272727` / accent `#569eff` / warn khaki `0.83, 0.78, 0.62` / success forward+ green `0.55, 0.75, 0.39` / low-contrast 0.3–0.35 ramp luminance step
+    - `src/style/theme.css` 重写:
+      - `:root` 装 Godot Minimal(`--ef-c-00..11` 中性炭灰 ramp 锚 `#272727`,`--ef-c-accent: #569eff`,低对比度 + "inset input" 角色映射 `--ef-bg-2` 用 `--ef-c-01` 比 `--ef-bg-1=--ef-c-03` 更深)
+      - 新增 `:root[data-ef-theme="dracula"]` 块,搬老默认的**冷调深灰 + `#7b6ef6` 紫 accent + "raised input"**(bg-2=c-03 比 bg-1=c-01 亮)+ 更强 shadow alpha
+      - `:root[data-ef-theme="light"]` **显式锁定** bg-1=c-01(白)/bg-2=c-03(浅灰 inset)/border 三条角色映射 + shadow 级别 —— 因为 :root 改 "inset in dark" 后光亮 primitives 再继承会反向变成 "raised in light",必须各主题各自 lock
+    - `demo/widgets/theme-config.js`:mode select 从 Dark/Light 两项扩成 Dark/Dracula/Light 三项;`applyThemeMode()` 改为"dark 去属性,其他全部 setAttribute"的统一写法
+    - 用户明确"不需要考虑任何兼容性,直接按最好的设计来做"—— 所以 localStorage 无迁移脚本、无 version 字段,旧用户上来就是新默认 + 自动清理(modeSig 若旧值 'dark' 直接重用,否则 select 默认到 dark)
+    - 验证(preview 真实点击 dropdown 三档):
+      - dark(attr=null):bg1=#272727, bg2=#1a1a1a, accent=#569eff, inset 约定 OK
+      - dracula(attr=dracula):bg1=#111113, bg2=#1c1c20, accent=#7b6ef6, raised 约定 OK
+      - light(attr=light):bg1=#ffffff, bg2=#e6e6ec, text=#18181c, accent=#5b4ee0, inset gray 约定 OK
+      - 零控制台报错;theme-config 的 refreshAll() 在 mode 切换后正确 re-pull 每个 token 到 signal,palette 面板 swatch 立刻同步
+    - rebuild:`dist/ef.css` 从 ~68K → 83010 bytes(三主题块 + light 显式锁定 role 映射)
+    - README.md + CLAUDE.md § 3.1 注释 + § 3.2 主题段均同步
 
 **下一步给下个 Claude 的提示**:
 - 进项目第一件事:`node tools/build.mjs --watch` + `.claude/launch.json` 的 `ef-demo`(端口 5570)
