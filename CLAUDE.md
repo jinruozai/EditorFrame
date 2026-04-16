@@ -956,50 +956,33 @@ editorframe/
 
 ---
 
-## 8. 当前会话状态(2026-04-15 晚,下班前)
+## 8. 当前会话状态(2026-04-16)
 
-> 用户今晚下班,回家接着写。这一节让回家的 Claude 一打开就能"接着干"。
+> 用户在家里和公司之间切换电脑。这一节让下一个 Claude 一打开就能"接着干"。
 
-**这一轮(下班前最后一次 push 之前)已完成的工作**:
+**已完成的全部工作(按时间线)**:
 
-1. **Demo 目录重构已落地**(这是更早就做过的 —— 见 § 3.1):单文件 `ui-showcase.js` 拆成 `demo/catalog.js`(数据)+ `demo/state.js`(Demo 命名空间)+ `demo/widgets/{component-tree,component-search,showcase,property-panel,theme-config}.js` 五张 panel。所有 panel widget 都走 `registerWidget`,左侧面板单击 preview / 双击 permanent,右侧 property panel 订阅 `Demo.selected`。
-2. **`src/widgets/` 整个目录并入 `src/core/`**:registry.js 和 context.js 跟 signal / errors / bus 一起住在 core;原本的 `tab.js` / `error-log.js` 换成 `src/ui/panel/{dock-tabs, log}.js`。目录分层见 § 3.1 最新版。
-3. **修了 sidebar dock toolbar 方向**:从 `'right'` 改回 `'left'`(用户自己纠正的)。
-4. **修了 log panel 顶栏 Copy/Clear 不可见**:根因是 `.ef-ui-select { width: 100% }` 覆盖了 flex 约束。在 `ui-data.css` 里给 `.ef-ui-errlog-bar .ef-ui-select` 显式设 `flex: 0 0 96px; width: 96px`。
-5. **修了下 dock 不能折叠**:给 bottom dock 的 tab-standard 加 `collapsible: true`,点 active tab 就能折叠,发现性提升。
-6. **VSCode 风格单击 preview / 双击 permanent 的预览槽语义,从 demo 提到框架层**(这是用户重点纠正的 —— "ui 库不天然支持这个吗? demo 里不该写一堆"):
-   - `src/tree/tree.js` 的 `addPanel(tree, dockId, partial, { transient: true })` 现在会**先过滤掉同 dock 已有的 transient panel**,再把新的插进去。纯函数层直接保证"一个 dock 最多一个预览槽"。
-   - `src/dock/layout.js` 的 `LayoutHandle` 新增 `promotePanel(panelId)` 便利方法。
-   - `demo/state.js` 的 `openCategory` 从 ~25 行手写驱逐逻辑缩成"命中 → promote/activate;未命中 → addPanel(transient)"。
-   - 四步序列(preview form → preview editor → permanent overlay → preview data)实测 panel 列表变化符合语义。
-7. **修了 Light 主题切换只翻转部分文字的 bug**(用户反馈"只有一部分 ui 的文字变暗了,其他主色调还是 dark"):
-   - 根因:`demo/widgets/theme-config.js` 的 palette effect 里 `EF.effect(() => writeToken(...))` 是**同步首次触发**,挂载 Palette 标签页那一刻就把所有 primitive 作为 inline style 写到 `:root` —— inline specificity 覆盖了 `[data-ef-theme="light"]` 属性选择器。
-   - 修复模板:新的 `bindWriter(sig, name, format)` 包装器,effect 体里先读 `getComputedStyle` 的 effective value,和想写的 literal 比较,**相同就 return**,初次挂载零污染。只有用户真编辑才写 inline。
-   - `refreshAll()` 在重新读 cascade 前先 `removeProperty` 清掉所有 tracked inline override。
-   - 切 mode 触发新的 `clearAllOverrides()` —— 同时清 `localStorage` 和 inline 样式,避免 dark 调参带到 light 变花。
-   - 实测 Dark↔Light 往返,`--ef-c-00` 正确翻转,`inlineTokenCount === 0`。
-   - 这条经验已经写进 § 3.3 的"已知坑 #2"(effect 同步首次触发的 inline 污染模板)。
-8. **Demo 手写元素换成 ui.* 组件**(用户要求"除 panel 外都用 ui 库"):
-   - `demo/widgets/showcase.js`:每张卡从 `ui.h('div', 'demo-card')` 改成 `ui.card({ title: entry.name, padded: false })`,stage 丢进 `card.body`。`data-demo-id` / click / active/pulse class 都在 ui.card 元素上。
-   - `demo/widgets/property-panel.js`:分类 chip 从 `ui.h('div', 'demo-prop-cat')` 换成 `ui.tag({ text: entry.category })`。
-   - `demo/widgets/demo.css`:下线 `.demo-card*` 基础样式(由 `.ef-ui-card` 提供),保留 `.demo-card-stage` 和 active/pulse 装饰;新增 `.demo-showcase-card > .ef-ui-card-head` 覆盖把 ui.card 默认 uppercase 头去掉(50+ 卡片密排更耐看);`.demo-prop-cat` 删,换 `.demo-prop-tags` flex 容器。
-   - `demo/state.js` 的 scroll pulse class 名同步改为 `demo-showcase-card-pulse`。
+**更早的会话(家里)**:
+1. Demo 目录重构:单文件拆成 `demo/catalog.js` + `demo/state.js` + 5 张 panel widget
+2. `src/widgets/` 并入 `src/core/`;tab/error-log 搬到 `src/ui/panel/`
+3. 修了 sidebar dock toolbar 方向、log 顶栏 Copy/Clear 不可见、bottom dock 折叠
+4. 框架级 transient 预览槽语义(addPanel 自动驱逐同 dock 已有 transient)
+5. 修了 Light 主题 inline 污染 bug(§ 3.3 已知坑 #2)
+6. Demo 手写元素换成 ui.* 组件(ui.card / ui.tag)
+7. UX 微交互全面精修(按钮/表单/overlay/tab spring 动画 + glow 焦点环)
+8. showcase 加了 Tabs 分类(三种 dock tab mock)
 
-**目前进行到哪(下一步继续的地方)**:
+**2026-04-16 这一轮(家里)**:
+9. **修了 showcase 卡片尺寸不适配**(方案 A+B):
+   - `demo/widgets/demo.css`:`.demo-showcase-body` 从 `grid` 改成 `flex-wrap: wrap; align-items: flex-start`,卡片按内容高度自然排列不再被同行最高卡撑开
+   - `demo/catalog.js`:gradientInput / curveInput / codeInput / fileInput 四个大组件标 `stageSize: 'lg'`
+   - `demo/widgets/showcase.js`:读 `entry.stageSize === 'lg'` 加 `.demo-showcase-card-wide` class(`flex: 1 1 280px; max-width: 420px`,默认卡片 `flex: 1 1 200px; max-width: 320px`)
+   - 验证:editor 分类卡片参差排列,curveInput(h=214)不再撑高 gradientInput(h=130);form 分类 15 张小卡 3 列均匀排布
 
-用户刚发现 **showcase 卡片尺寸不适配**(截图里 `curveInput` 撑高了整行,隔壁卡片产生大量留白,视觉上像"溢出"):
-
-- 根因:`.demo-showcase-body` 用 `grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))` 强制所有卡片同宽,grid 行高按行内最高那张卡对齐。`demo/catalog.js:468` 的 curveInput 又写死 `width:220px;height:160px`,加上 presets 按钮栏,总高超过 gradient/code/path,所在行被它撑高。
-- 已给用户三条方案(A/B/C),推荐 **A+B 组合**(纯 demo 层改动):
-  - A:`.demo-showcase-body` 从 grid 改 `flex-wrap: wrap; align-items: flex-start`,卡片按内容宽高自然排(Blender 风格本就该参差)
-  - B:大组件(curve/code/gradient/fileInput)在 catalog 里标 `stageSize: 'lg'` 或给 `.demo-showcase-card-wide` 类,CSS 里给更宽的 flex-basis
-  - C(不推荐):动 ui 库 curveInput 自适应,违反 § 2.6
-- **等用户回家回复"选 A+B"或其他方向再动代码**。当前 commit 不包含这一块修复。
-
-**下一步给回家的 Claude 的提示**:
-- **第一件事**:`git pull` 拿下班前这一轮 commit
-- 然后 `node tools/build.mjs --watch` + `.claude/launch.json` 的 `ef-demo`(端口 5570)
-- 用户可能直接说"开始 A+B"或给别的方向,按 § 2.3 design-first 流程处理
-- 任何新踩的坑都补到 § 3.3
+**下一步给下个 Claude 的提示**:
+- 进项目第一件事:`node tools/build.mjs --watch` + `.claude/launch.json` 的 `ef-demo`(端口 5570)
+- 改 `src/` 下文件**必须 rebuild**;改 `demo/` 文件只需 reload
+- 用户给新需求时按 § 2.3 design-first 流程(先列计划等用户说"开始")
+- 新踩的坑补到 § 3.3
 
 **Gitee 远程**:`https://gitee.com/lazygoo/editor-frame.git`。

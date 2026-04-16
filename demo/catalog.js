@@ -448,6 +448,7 @@
     // ═════════════════════ EDITOR ═════════════════════
     {
       id: 'gradientInput', name: 'Gradient Input', category: 'editor',
+      stageSize: 'lg',
       description: 'Linear gradient color stop editor.',
       signals: function () { return {
         value: EF.signal({ stops: [
@@ -462,6 +463,7 @@
 
     {
       id: 'curveInput', name: 'Curve Input', category: 'editor',
+      stageSize: 'lg',
       description: 'Cubic bezier easing curve editor.',
       signals: function () { return { value: EF.signal([0.42, 0, 0.58, 1]) } },
       mount: function (s) {
@@ -474,6 +476,7 @@
 
     {
       id: 'codeInput', name: 'Code Input', category: 'editor',
+      stageSize: 'lg',
       description: 'Monospace text editor with line numbers.',
       signals: function () { return { value: EF.signal('function greet(name) {\n  return "Hello, " + name\n}') } },
       mount: function (s) { return ui.codeInput({ value: s.value, language: 'js', rows: 5 }) },
@@ -500,6 +503,7 @@
 
     {
       id: 'fileInput', name: 'File Input', category: 'editor',
+      stageSize: 'lg',
       description: 'Drop zone + click-to-pick file input.',
       signals: function () { return { value: EF.signal(null) } },
       mount: function (s) { return ui.fileInput({ value: s.value }) },

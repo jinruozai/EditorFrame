@@ -13,15 +13,24 @@
   border-bottom: 1px solid var(--ef-border);
   background: var(--ef-bg-2);
 }
-/* Dense grid so every card is only as wide as its content needs.
-   Cards auto-wrap and stack naturally — much better space use than
-   one-per-row. */
+/* Flex-wrap so every card keeps its own natural height (no grid row
+   alignment forcing a 160-tall curveInput to stretch the whole row).
+   Each card has an intrinsic flex-basis; large editors get '-wide'. */
 .demo-showcase-body {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
   gap: var(--ef-space-2);
   padding: var(--ef-space-2);
-  align-content: start;
+}
+.demo-showcase-body > .demo-showcase-card {
+  flex: 1 1 200px;
+  max-width: 320px;
+}
+.demo-showcase-body > .demo-showcase-card-wide {
+  flex: 1 1 280px;
+  max-width: 420px;
 }
 
 /* The body lives inside an ef-ui-scrollarea — make it scroll. */

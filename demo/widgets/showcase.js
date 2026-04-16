@@ -41,6 +41,7 @@
         // and data-demo-id so Demo.select's scrollIntoView can find it.
         const card = ui.card({ title: entry.name, padded: false })
         card.classList.add('demo-showcase-card')
+        if (entry.stageSize === 'lg') card.classList.add('demo-showcase-card-wide')
         card.setAttribute('data-demo-id', entry.id)
         if (entry.description) card.title = entry.description
 
