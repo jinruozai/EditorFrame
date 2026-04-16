@@ -139,7 +139,8 @@ editor-frame/
     dock/
       runtime.js                   # PanelRuntime 生命周期 + activate + LRU + detached DOM
       render.js                    # reconcile / build / toolbar 两段渲染
-      interactions.js              # splitter 拖拽 + 角拖 split/merge + 3×3 hover + panel drag
+      interactions.js              # splitter 拖拽 + 角拖 split/merge + 3×3 hover
+      panel-drag.js                # tab tear-out + 跨 dock drop + pop-out(§ 4.14)
       migrate.js                   # 跨窗口 BroadcastChannel 协议 + serialize/deserialize
       layout.js                    # createDockLayout 入口胶水 + LayoutHandle(含 promotePanel)
     style/
@@ -235,6 +236,7 @@ editor-frame/
 6. **dist/ef.{js,css} 是已 commit 的产物**。改了源码之后 commit 时记得把 dist 一起 commit,否则克隆出去的人看不到效果。
 7. **focus mode 有 CSS containing block 限制**(§ 4.5 已记录)。EF root 的祖先不能有 `transform/filter/perspective/will-change`。
 8. **`addPanel(..., { transient: true })` 自动驱逐同 dock 已有 transient**(§ 4.4 框架级预览槽语义,2026-04-15 落地)。调用方不用自己写"找到现有 transient 再删"的胶水 —— tree 层已经做了。`LayoutHandle.promotePanel(panelId)` 负责"单击→preview / 双击→固定"的升级路径。
+9. **所有可调常数的唯一存储是 `src/style/theme.css` 的 `--ef-*` token**(2026-04-16 "统一配置" 轮落地,见 § 8 item 13)。**不要**在 JS 里新写任何"默认时长 220ms / 默认阈值 6px / icon 映射表"。判据:"JS 要不要对这个值做数值运算?" 否 → CSS `var()`/`calc(var())`/`content: var()`;是 → `EF.ui.readNum('--ef-xxx', fallback)`。消费者看 `drawer.js` / `interactions.js` / `panel-drag.js` 的写法,不要复制旧习惯。
 
 ---
 
@@ -978,6 +980,43 @@ editorframe/
    - `demo/catalog.js`:gradientInput / curveInput / codeInput / fileInput 四个大组件标 `stageSize: 'lg'`
    - `demo/widgets/showcase.js`:读 `entry.stageSize === 'lg'` 加 `.demo-showcase-card-wide` class(`flex: 1 1 280px; max-width: 420px`,默认卡片 `flex: 1 1 200px; max-width: 320px`)
    - 验证:editor 分类卡片参差排列,curveInput(h=214)不再撑高 gradientInput(h=130);form 分类 15 张小卡 3 列均匀排布
+
+10. **审计一轮 8 处硬 bug 的"最终优雅形态"修复**(不是补丁式,是直接按应该的样子重写):
+    - `src/style/ui-data.css`:`--ef-warning` → `--ef-warn`(L217/218/240)、`--ef-radius-sm` → `--ef-r-2`(L230)—— theme.css 只定义了 `--ef-warn` 和 `--ef-r-*`,老名字静默 fall back 到 initial
+    - `src/dock/interactions.js`:splitter `onUp` 补 `classList.remove('ef-splitter-active')`,对齐 pointerdown 的 add
+    - `src/ui/form/numberInput.js`:Escape 从"重写 txt.value + blur 触发 exitEdit(true)"改成直接 `exitEdit(false); txt.blur()`;`exitEdit(false)` 先置 `editing = false`,随后 blur 的 `exitEdit(true)` 被 `if (!editing) return` 守卫吞掉,不再虚假回写精度化的值
+    - `src/ui/editor/pathInput.js`:在 hidden file input 上补 `cancel` 事件监听,cancel 和 change 都走统一 `cleanup()` 移除 DOM 节点,用户点 Cancel 不再泄漏
+    - `src/core/signal.js`:提取 `teardown(eff)` 共享函数,`run` 和 `dispose` 都复用;`dispose` 加 `if (eff.disposed) return` 守卫,重复 dispose 不再重复跑 cleanups
+    - `src/dock/migrate.js`:popOut 单一 cleanup 路径(ack / reject / popup-closed 三条都走同一个 `cleanup()`),加 `pollClosed = setInterval(…, 500)` 监测 popup 关闭,`clearInterval` 一并清
+    - `src/ui/overlay/menu.js`:加 `openSubs[]` 跟踪,`closeSubs()` 递归关闭;sibling-row mouseenter 时关掉前一个 submenu,避免孤立子菜单
+    - `src/core/context.js`:`ctx.bus` 丢弃 `off(topic, handler)` 表面,只留 `on` 返回的 disposer;disposer 幂等 + 自行从 `cleanups` 里 splice 自己,彻底防止 dispose 留 stale 条目
+
+11. **审计二轮 5 处"架构级"统一**(同样最终形态,不妥协):
+    - `src/dock/runtime.js`:新增 `layout.movePanel` 和 `layout.promotePanel` 作为 authoritative mutation —— 和已有的 `addPanel/removePanel/activatePanel` 并列。`movePanel` 自带 markActivation;所有调用点(`handle.movePanel`、`interactions.js` 拖放、`panel-drag.js`、migrate.js)统一走这条路径,markActivation 不会再被忘
+    - `src/dock/layout.js`:`handle.movePanel`/`promotePanel` 瘦成 `function (…) { layout.…(…) }` 纯代理
+    - `src/core/context.js`:`ctx.panel.promote()` 委派给 `layout.promotePanel`;`ctx.dock.addPanel(partial)` 返回 `{ panelId }` 对象,和 `handle.addPanel` 形状一致("一个操作一种形状")
+    - `src/dock/interactions.js`:删掉内联 `treeSig.set(EF.movePanel(...)) + markActivation`,改 `layout.movePanel(panelId, resolvedDock, resolvedIndex)` 单行
+    - `src/dock/migrate.js` `acceptMigration`:同理,改 `layout.addPanel(targetId, …)` 单行,不再自己 setTree+markActivation
+
+12. **拆 `interactions.js`**(442 → 228 行,纳入 350 预算):
+    - 新增 `src/dock/panel-drag.js`(234 行),装 `beginPanelDrag` + `computeTabInsertionIndex` + `makeDropIndicator` + `makeGhost`
+    - `interactions.js` 只保留 splitter drag(§ 4.1)+ corner drag split/merge(§ 4.1/§ 4.2)+ helpers(`canMergeInto` / `makeMergeLabel` / `clamp`)
+    - `DRAG_THRESHOLD` 最初两个文件各持一份 local const —— 被下一轮"统一配置"(item 13)清理,改为都从 `--ef-drag-threshold` 读
+    - `tools/build.mjs` 的 `JS_ORDER` 把 `dock/panel-drag.js` 插到 `dock/interactions.js` 之后、`dock/migrate.js` 之前
+    - preview 验证:真实 pointerdown/move/up 序列跑一遍 reorder,ghost 挂载、indicator 绘制、`layout.movePanel` 提交、pointerup 全部清理 —— 无错误;17 个 `EF._dock.*` 公共函数全部健在
+
+13. **统一配置总线(单一存储 + 两种消费形态)** —— 把散落在 JS 里的可调常数(drag threshold、z-index 磁数、setTimeout 时长、icon 字符映射)全部迁到 `src/style/theme.css` 作为 `--ef-*` token,JS 侧只留**一条**通道读取:
+    - 新增 `src/ui/_internal/_css.js`,导出唯一 JS 桥 `EF.ui.readNum(name, fallback)` —— `getComputedStyle(documentElement).getPropertyValue(name)` + `parseFloat`
+    - `src/style/theme.css` Layer 3 扩 5 个 token:`--ef-drag-threshold: 6` 一个交互阈值 + `--ef-icon-info/success/warn/error` 四个 CSS 字符串(带引号,给 `content:` 用)
+    - `src/style/ui-overlay.css` 加 alert/toast 的 `.ef-ui-*-icon::before { content: var(--ef-icon-<kind>) }` 规则
+    - `alert.js` / `toast.js` 删掉本地 `const ICONS` 映射表,icon span 留空(只给 `aria-hidden`)由 CSS `::before` 填字符 —— 换图标集改 token 一行搞定
+    - `_portal.js` / `_overlay.js` z-index 从 JS 写 hardcoded 数字改为 `style.zIndex = 'var(--ef-z-popover)'` / `'calc(var(--ef-z-popover) + ' + depth + ')'`,**计算延迟到浏览器** —— 主题改 `--ef-z-popover` 立刻生效,JS 零感知
+    - `drawer.js` / `toast.js` 的 `setTimeout(..., 220)` 硬编码改 `ui.readNum('--ef-dur-slow', 240)` —— 动画时长改 theme 同步
+    - `interactions.js` / `panel-drag.js` 的 DRAG_THRESHOLD 模块常数删除,改每次 drag 会话开始时 `ui.readNum('--ef-drag-threshold', 6)` 读一次存 local(不在 pointermove 内层循环里 re-read)
+    - `tools/build.mjs` `JS_ORDER` 把 `ui/_internal/_css.js` 排在 Layer 5 UI internals 首位(必须先于 `_overlay.js` 等消费者)
+    - preview 实测:4 个 toast kind 的 `::before` content 肉眼 + `getComputedStyle` 双验通过(ⓘ/✓/⚠/⨯);`portalRoot().style.zIndex` 内联 = `var(--ef-z-popover)`,computed = 1000;`ui.readNum('--ef-dur-slow')` = 240;控制台零报错
+    - **架构意义**:单一存储(CSS tokens)+ 判据收敛(只有一个问题:"JS 要不要对这个值做运算",不做 → `var()`/`calc()`/`content: var()`,做 → `ui.readNum`)+ 零 JS 映射表 —— 换主题/换图标集/换触控尺寸,全部只改 theme.css 一份
+    - **2026-04-16 晚些时候**补完 § 8 时间线(本 item)、写了项目 README.md、推 Gitee
 
 **下一步给下个 Claude 的提示**:
 - 进项目第一件事:`node tools/build.mjs --watch` + `.claude/launch.json` 的 `ef-demo`(端口 5570)

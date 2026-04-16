@@ -200,9 +200,11 @@
       if (o.ariaLabel) el.setAttribute('aria-label', o.ariaLabel)
       if (o.ariaLabelledBy) el.setAttribute('aria-labelledby', o.ariaLabelledBy)
 
-      // z-index: portal root is 1000, each overlay gets +1 above the previous
-      // top of stack. That way nested popovers render above their parents.
-      el.style.zIndex = String(1001 + stack.length)
+      // z-index: portal root is var(--ef-z-popover); each overlay gets +1
+      // above the previous top of stack (nested popovers render above their
+      // parents). calc() defers resolution to the browser so live theme
+      // overrides of --ef-z-popover take effect with no JS-side mirror.
+      el.style.zIndex = 'calc(var(--ef-z-popover) + ' + (stack.length + 1) + ')'
 
       // Start unarmed, so the very same mousedown/click that opened this
       // overlay won't immediately dismiss it. Arm on the next tick.

@@ -127,10 +127,13 @@
       enterEdit()
     })
 
+    // Blur always commits. Escape does an explicit revert via exitEdit(false)
+    // BEFORE blurring; exitEdit's `if (!editing) return` guard then makes the
+    // subsequent blur-driven exitEdit(true) a no-op, so Escape never writes.
     txt.addEventListener('blur', function () { exitEdit(true) })
     txt.addEventListener('keydown', function (e) {
       if (e.key === 'Enter')           { txt.blur() }
-      else if (e.key === 'Escape')     { txt.value = fmt(sig.peek()); txt.blur() }
+      else if (e.key === 'Escape')     { exitEdit(false); txt.blur() }
       else if (e.key === 'ArrowUp')    { e.preventDefault(); commit(sig.peek() + stepS.peek()) }
       else if (e.key === 'ArrowDown')  { e.preventDefault(); commit(sig.peek() - stepS.peek()) }
     })

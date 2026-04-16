@@ -35,14 +35,22 @@
     else run(eff)
   }
 
-  function run(eff) {
-    if (eff.disposed) return
+  // Drop every dep edge and run+clear every onCleanup callback. Shared by the
+  // re-run path (run) and the final dispose path, so the two can't drift.
+  // Cleanup failures go to console.error, not EF.errors — § 4.7: signal.js is
+  // the zero-dep bottom, so a cleanup throw is fail-loud, not panel-scoped.
+  function teardown(eff) {
     eff.deps.forEach(function (s) { s.delete(eff) })
     eff.deps.clear()
     for (let i = 0; i < eff.cleanups.length; i++) {
       try { eff.cleanups[i]() } catch (e) { console.error(e) }
     }
     eff.cleanups = []
+  }
+
+  function run(eff) {
+    if (eff.disposed) return
+    teardown(eff)
     const prev = currentEffect
     currentEffect = eff
     try { eff.fn() } finally { currentEffect = prev }
@@ -52,12 +60,9 @@
     const eff = { fn: fn, deps: new Set(), cleanups: [], disposed: false }
     run(eff)
     return function dispose() {
+      if (eff.disposed) return
       eff.disposed = true
-      eff.deps.forEach(function (s) { s.delete(eff) })
-      eff.deps.clear()
-      for (let i = 0; i < eff.cleanups.length; i++) {
-        try { eff.cleanups[i]() } catch (e) { console.error(e) }
-      }
+      teardown(eff)
     }
   }
 

@@ -13,7 +13,9 @@
     if (!r) {
       r = document.createElement('div')
       r.id = 'ef-portal-root'
-      r.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;z-index:1000;'
+      // z-index: use the popover token as the portal layer baseline; each
+      // overlay stacks on top via calc() in _overlay.js.
+      r.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;z-index:var(--ef-z-popover);'
       document.body.appendChild(r)
     }
     return r

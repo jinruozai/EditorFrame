@@ -53,12 +53,29 @@
       }
     }
 
-    layout.addPanel = function (dockId, partial) {
-      const r = EF.addPanel(treeSig.peek(), dockId, partial)
+    // Single authoritative mutation path for adding panels. Every caller
+    // (ctx.dock.addPanel, the public LayoutHandle, migrate.js) funnels
+    // through here, so markActivation + maybeEvictLRU are never skipped.
+    layout.addPanel = function (dockId, partial, opts) {
+      const r = EF.addPanel(treeSig.peek(), dockId, partial, opts)
       layout.setTree(r.tree)
       layout.markActivation(r.panelId)
       maybeEvictLRU(layout)
       return r.panelId
+    }
+
+    // Cross-dock move — runtime-level. Same invariant as addPanel: all
+    // callers (handle, interactions.js panel drag, etc.) route here so
+    // markActivation is never forgotten. No LRU eviction: move doesn't
+    // create new runtimes, only re-homes existing ones.
+    layout.movePanel = function (panelId, dstDockId, dstIndex) {
+      layout.setTree(EF.movePanel(treeSig.peek(), panelId, dstDockId, dstIndex))
+      layout.markActivation(panelId)
+    }
+
+    // Preview → permanent promotion. Pure tree rewrite, no runtime impact.
+    layout.promotePanel = function (panelId) {
+      layout.setTree(EF.promotePanel(treeSig.peek(), panelId))
     }
 
     return layout

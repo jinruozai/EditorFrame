@@ -31,15 +31,25 @@
 
     ctx.safeCall = function (fn) { return EF.safeCall(runtimeSource(runtime), fn) }
 
-    // Auto-unsubscribing bus: every on() registers an offsetter into the
-    // runtime's cleanups list, so panel dispose drops every subscription.
+    // Auto-unsubscribing bus. The disposer returned by `on()` is the single
+    // canonical way to unsubscribe — it's idempotent and self-splices from
+    // `runtime.cleanups`, so manual early-unsubscribe leaves no stale entry.
+    // Panel dispose flushes anything still in cleanups. Widgets that need the
+    // raw `off(topic, handler)` surface can use EF.bus.off directly.
     ctx.bus = {
       on: function (topic, handler) {
-        const off = EF.bus.on(topic, handler)
-        runtime.cleanups.push(off)
-        return off
+        const rawOff = EF.bus.on(topic, handler)
+        let done = false
+        const dispose = function () {
+          if (done) return
+          done = true
+          rawOff()
+          const i = runtime.cleanups.indexOf(dispose)
+          if (i >= 0) runtime.cleanups.splice(i, 1)
+        }
+        runtime.cleanups.push(dispose)
+        return dispose
       },
-      off:  EF.bus.off,
       emit: EF.bus.emit,
     }
 
@@ -79,7 +89,9 @@
 
       activatePanel: function (id) { layout.activatePanel(id) },
       removePanel:   function (id) { layout.removePanel(id) },
-      addPanel:      function (partial) { return layout.addPanel(dockIdSig(), partial) },
+      // Return shape matches the public LayoutHandle (§ 4.9 Layer 1):
+      // `{ panelId }`, never a bare string. One operation, one shape.
+      addPanel:      function (partial) { return { panelId: layout.addPanel(dockIdSig(), partial) } },
       toggleFocus:   function () {
         const d = lookupDock()
         layout.setTree(EF.setFocused(treeSig.peek(), dockIdSig(), !(d && d.focused)))
@@ -114,7 +126,7 @@
         patch({ props: Object.assign({}, cur, p) })
       },
 
-      promote: function () { layout.setTree(EF.promotePanel(layout.treeSig.peek(), panelId)) },
+      promote: function () { layout.promotePanel(panelId) },
       close:   function () { layout.removePanel(panelId) },
       popOut:  function () {
         if (EF._dock.popOutPanel) EF._dock.popOutPanel(panelId, layout)

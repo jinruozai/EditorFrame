@@ -50,18 +50,12 @@
       subscribe: function (fn) { return effect(function () { fn(tree()) }) },
 
       addPanel: function (dockId, partial, opts) {
-        const r = EF.addPanel(tree.peek(), dockId, partial, opts)
-        tree.set(r.tree)
-        layout.markActivation(r.panelId)
-        return { panelId: r.panelId }
+        return { panelId: layout.addPanel(dockId, partial, opts) }
       },
-      removePanel: function (panelId) { layout.removePanel(panelId) },
-      activatePanel: function (panelId) { layout.activatePanel(panelId) },
-      promotePanel: function (panelId) { tree.set(EF.promotePanel(tree.peek(), panelId)) },
-      movePanel: function (panelId, dstDockId, dstIndex) {
-        tree.set(EF.movePanel(tree.peek(), panelId, dstDockId, dstIndex))
-        layout.markActivation(panelId)
-      },
+      removePanel:   function (panelId)                      { layout.removePanel(panelId) },
+      activatePanel: function (panelId)                      { layout.activatePanel(panelId) },
+      promotePanel:  function (panelId)                      { layout.promotePanel(panelId) },
+      movePanel:     function (panelId, dstDockId, dstIndex) { layout.movePanel(panelId, dstDockId, dstIndex) },
 
       splitDock: function (dockId, dir, side, ratio, opts) {
         // § 4.1 — seed new dock from active panel widget defaults.

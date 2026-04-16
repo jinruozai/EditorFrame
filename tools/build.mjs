@@ -39,10 +39,12 @@ const JS_ORDER = [
   'dock/runtime.js',
   'dock/render.js',
   'dock/interactions.js',
+  'dock/panel-drag.js',
   'dock/migrate.js',
   'dock/layout.js',
 
   // Layer 5 — UI library internals
+  'ui/_internal/_css.js',
   'ui/_internal/_portal.js',
   'ui/_internal/_floating.js',
   'ui/_internal/_drag.js',

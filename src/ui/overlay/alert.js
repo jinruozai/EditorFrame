@@ -10,8 +10,6 @@
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
-  const ICONS = { info: 'ⓘ', success: '✓', warn: '⚠', error: '⨯' }
-
   ui.alert = function (opts) {
     const o = opts || {}
     const kind    = ui.asSig(o.kind    != null ? o.kind    : 'info')
@@ -25,8 +23,9 @@
       el.setAttribute('aria-live',  assertive ? 'assertive' : 'polite')
     })
 
+    // Icon glyph comes from `::before { content: var(--ef-icon-<kind>) }`;
+    // the span is an empty aria-hidden slot that CSS fills.
     const iconEl = ui.h('span', 'ef-ui-alert-icon', { 'aria-hidden': 'true' })
-    ui.bind(el, kind, function (v) { iconEl.textContent = ICONS[v] || 'ⓘ' })
     el.appendChild(iconEl)
 
     const inner = ui.h('div', 'ef-ui-alert-body')

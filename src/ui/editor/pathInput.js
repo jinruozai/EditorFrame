@@ -38,10 +38,20 @@
     btn.addEventListener('click', function () {
       if (disabled.peek()) return
       if (o.useFileInput) {
+        // Hidden <input type=file> has to live in the DOM for .click() to
+        // reliably open the picker (some older browsers reject detached
+        // inputs). Both outcomes — change (file chosen) and cancel (picker
+        // dismissed) — funnel through the same cleanup so the element never
+        // accumulates in <body>.
         const f = ui.h('input', null, { type: 'file' })
         f.style.display = 'none'
         document.body.appendChild(f)
-        f.addEventListener('change', function () { if (f.files[0]) doWrite(f.files[0].name); document.body.removeChild(f) })
+        function cleanup() { if (f.parentNode) f.parentNode.removeChild(f) }
+        f.addEventListener('change', function () {
+          if (f.files[0]) doWrite(f.files[0].name)
+          cleanup()
+        })
+        f.addEventListener('cancel', cleanup)
         f.click()
       } else if (o.onBrowse) {
         o.onBrowse(function (path) { if (path) doWrite(path) })

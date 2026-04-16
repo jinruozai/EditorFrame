@@ -220,12 +220,16 @@
 
 .ef-ui-alert-info    { border-color: var(--ef-info);    background: var(--ef-info-bg); }
 .ef-ui-alert-info    .ef-ui-alert-icon { color: var(--ef-info); }
+.ef-ui-alert-info    .ef-ui-alert-icon::before { content: var(--ef-icon-info); }
 .ef-ui-alert-success { border-color: var(--ef-success); background: var(--ef-success-bg); }
 .ef-ui-alert-success .ef-ui-alert-icon { color: var(--ef-success); }
+.ef-ui-alert-success .ef-ui-alert-icon::before { content: var(--ef-icon-success); }
 .ef-ui-alert-warn    { border-color: var(--ef-warn);    background: var(--ef-warn-bg); }
 .ef-ui-alert-warn    .ef-ui-alert-icon { color: var(--ef-warn); }
+.ef-ui-alert-warn    .ef-ui-alert-icon::before { content: var(--ef-icon-warn); }
 .ef-ui-alert-error   { border-color: var(--ef-error);   background: var(--ef-error-bg); }
 .ef-ui-alert-error   .ef-ui-alert-icon { color: var(--ef-error); }
+.ef-ui-alert-error   .ef-ui-alert-icon::before { content: var(--ef-icon-error); }
 
 /* ── toast (top-right stack) ────────────────────────────────────── */
 .ef-ui-toast-stack {
@@ -290,9 +294,13 @@
 
 .ef-ui-toast-info    { border-left: 3px solid var(--ef-info); }
 .ef-ui-toast-info    .ef-ui-toast-icon { color: var(--ef-info); }
+.ef-ui-toast-info    .ef-ui-toast-icon::before { content: var(--ef-icon-info); }
 .ef-ui-toast-success { border-left: 3px solid var(--ef-success); }
 .ef-ui-toast-success .ef-ui-toast-icon { color: var(--ef-success); }
+.ef-ui-toast-success .ef-ui-toast-icon::before { content: var(--ef-icon-success); }
 .ef-ui-toast-warn    { border-left: 3px solid var(--ef-warn); }
 .ef-ui-toast-warn    .ef-ui-toast-icon { color: var(--ef-warn); }
+.ef-ui-toast-warn    .ef-ui-toast-icon::before { content: var(--ef-icon-warn); }
 .ef-ui-toast-error   { border-left: 3px solid var(--ef-error); }
 .ef-ui-toast-error   .ef-ui-toast-icon { color: var(--ef-error); }
+.ef-ui-toast-error   .ef-ui-toast-icon::before { content: var(--ef-icon-error); }

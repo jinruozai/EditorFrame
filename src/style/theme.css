@@ -155,6 +155,15 @@
   --ef-tab-h:        28px;
   --ef-control-px:   8px;       /* default horizontal padding inside controls */
 
+  /* ── Layer 3 — Interaction thresholds (JS reads via ui.readNum) ── */
+  --ef-drag-threshold: 6;       /* px before a pointerdown becomes a drag */
+
+  /* ── Layer 3 — Status icon glyphs (consumed by CSS `content:`) ─── */
+  --ef-icon-info:    "ⓘ";
+  --ef-icon-success: "✓";
+  --ef-icon-warn:    "⚠";
+  --ef-icon-error:   "⨯";
+
   /* Legacy aliases — kept until Phase 2 grep-replace finishes.
    * dock.css / widget.css will be migrated to use the new role names directly,
    * then these can be removed. */

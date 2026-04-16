@@ -18,8 +18,18 @@
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
-  function buildMenu(items, onClose) {
+  // Build a menu element. The returned element carries a `closeSubs()` method
+  // that shuts every open submenu beneath it — both `ui.menu` (for the root)
+  // and sibling-row mouseenter (for focus semantics) call it, so a menu is
+  // never left with stray children floating in portal-root.
+  function buildMenu(items, onSelect) {
     const list = ui.h('div', 'ef-ui-menu')
+    const openSubs = []  // { row, pop }
+    function closeSubs() {
+      while (openSubs.length) openSubs.pop().pop.close()
+    }
+    list.closeSubs = closeSubs
+
     for (let i = 0; i < items.length; i++) {
       const it = items[i]
       if (it.type === 'divider') {
@@ -35,30 +45,34 @@
         (it.danger ? ' ef-ui-menu-item-danger' : ''),
         { type: 'button' })
       if (it.icon) row.appendChild(ui.icon({ glyph: it.icon, size: 'sm' }))
-      const labelEl = ui.h('span', 'ef-ui-menu-item-label', { text: it.label || '' })
-      row.appendChild(labelEl)
+      row.appendChild(ui.h('span', 'ef-ui-menu-item-label', { text: it.label || '' }))
       if (it.kbd) {
-        const k = ui.kbd(it.kbd)
-        k.classList.add('ef-ui-menu-item-kbd')
-        row.appendChild(k)
+        const k = ui.kbd(it.kbd); k.classList.add('ef-ui-menu-item-kbd'); row.appendChild(k)
       }
+
       if (it.items && it.items.length) {
-        const arrow = ui.h('span', 'ef-ui-menu-item-sub', { text: '▸' })
-        row.appendChild(arrow)
-        let subPop = null
+        row.appendChild(ui.h('span', 'ef-ui-menu-item-sub', { text: '▸' }))
         row.addEventListener('mouseenter', function () {
-          if (subPop) return
-          const sub = buildMenu(it.items, onClose)
-          subPop = ui.popover({ anchor: row, content: sub, side: 'right', align: 'start' })
-        })
-        row.addEventListener('mouseleave', function () {
-          // submenu has its own dismiss-on-outside; let it manage itself
+          // One open submenu per parent menu — moving to a sibling row closes
+          // the previous branch. Matches native desktop menu behavior.
+          if (openSubs.length && openSubs[openSubs.length - 1].row === row) return
+          closeSubs()
+          const subList = buildMenu(it.items, onSelect)
+          const pop = ui.popover({
+            anchor: row, content: subList, side: 'right', align: 'start',
+            onDismiss: function () {
+              subList.closeSubs()
+              const idx = openSubs.findIndex(function (s) { return s.row === row })
+              if (idx >= 0) openSubs.splice(idx, 1)
+            },
+          })
+          openSubs.push({ row: row, pop: pop })
         })
       } else {
         row.addEventListener('click', function () {
           if (it.disabled) return
           if (it.onSelect) it.onSelect()
-          onClose && onClose()
+          onSelect && onSelect()
         })
       }
       list.appendChild(row)
@@ -69,14 +83,18 @@
   ui.menu = function (opts) {
     const o = opts || {}
     let pop = null
-    function close() { if (pop) { pop.close(); pop = null } }
-    const list = buildMenu(o.items || [], close)
+    function closeAll() { if (pop) { pop.close(); pop = null } }
+    const list = buildMenu(o.items || [], closeAll)
     pop = ui.popover({
       anchor:  o.anchor,
       content: list,
       side:    o.side  || 'bottom',
       align:   o.align || 'start',
       role:    'menu',
+      // Outside-click / ESC / explicit close all route through here → walk
+      // the open-submenu chain and dismiss top-down. Without this, a portal
+      // sub-popover survives its parent and becomes an orphan overlay.
+      onDismiss: function () { list.closeSubs() },
     })
     return pop
   }

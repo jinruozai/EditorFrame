@@ -4,7 +4,8 @@
 //
 // Like modal, drawer is modal-class (focus trap + ARIA dialog). The open/
 // close animation is driven by a CSS class, and unmount is deferred by
-// ~220ms so the slide-out tween plays before the DOM detaches.
+// --ef-dur-slow (read via ui.readNum) so the slide-out tween plays before
+// the DOM detaches.
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
@@ -47,7 +48,9 @@
       ariaLabel:      titleId ? undefined : (o.ariaLabel || 'Drawer'),
       onDismiss: function () {
         panel.classList.remove('ef-ui-drawer-open')
-        setTimeout(function () { unmount(); o.onClose && o.onClose() }, 220)
+        // Slide-out transition uses --ef-dur-slow; unmount after it finishes.
+        setTimeout(function () { unmount(); o.onClose && o.onClose() },
+          ui.readNum('--ef-dur-slow', 240))
       },
     })
 

@@ -71,6 +71,19 @@
       return
     }
 
+    // Single cleanup path — whichever of { ack, reject, popup-closed } fires
+    // first unwinds the listener and the closed-poll timer. This is the only
+    // way migration state is torn down; after it runs the whole popOut call
+    // is inert.
+    let done = false
+    const pollClosed = setInterval(function () { if (w.closed) cleanup() }, 500)
+    function cleanup() {
+      if (done) return
+      done = true
+      clearInterval(pollClosed)
+      window.removeEventListener('message', onMessage)
+    }
+
     function onMessage(ev) {
       if (!isTrustedEvent(ev, w)) return
       const msg = ev.data
@@ -94,10 +107,10 @@
           state:     state,
         }, targetOriginFor(w))
       } else if (msg.efAction === 'migrate-ack' && msg.txId === txId) {
-        window.removeEventListener('message', onMessage)
+        cleanup()
         layout.removePanel(panelId)
       } else if (msg.efAction === 'migrate-reject' && msg.txId === txId) {
-        window.removeEventListener('message', onMessage)
+        cleanup()
         EF.reportError({ scope: 'global' },
           new Error('popOut: target window rejected migration (no accepting dock)'))
       }
@@ -144,25 +157,23 @@
       return
     }
 
-    const r = EF.addPanel(tree, targetId, {
+    const panelId = layout.addPanel(targetId, {
       widget: widget,
       title:  msg.panelData.title,
       icon:   msg.panelData.icon,
       props:  msg.panelData.props,
       toolbarItems: msg.panelData.toolbarItems,
     })
-    layout.setTree(r.tree)
-    layout.markActivation(r.panelId)
 
-    // The setTree above triggered reconcile synchronously, which materialized
+    // layout.addPanel triggered reconcile synchronously, which materialized
     // the widget's contentEl. Now apply serialized state if both sides
     // implement it.
-    const pr = EF._dock.findPanelRuntime(layout, r.panelId)
+    const pr = EF._dock.findPanelRuntime(layout, panelId)
     if (msg.state != null && pr && pr.contentEl) {
       const spec = EF.resolveWidget(widget)
       if (spec.deserialize) {
         EF.safeCall(
-          { scope: 'widget', widget: widget, panelId: r.panelId },
+          { scope: 'widget', widget: widget, panelId: panelId },
           function () { spec.deserialize(pr.contentEl, msg.state) }
         )
       }

@@ -8,7 +8,6 @@
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
-  const ICONS = { info: 'ⓘ', success: '✓', warn: '⚠', error: '⨯' }
   let stackEl = null
 
   function ensureStack() {
@@ -32,7 +31,8 @@
       'aria-live':    assertive ? 'assertive' : 'polite',
       'aria-atomic':  'true',
     })
-    el.appendChild(ui.h('span', 'ef-ui-toast-icon', { text: ICONS[kind] || 'ⓘ', 'aria-hidden': 'true' }))
+    // Icon glyph comes from `::before { content: var(--ef-icon-<kind>) }`.
+    el.appendChild(ui.h('span', 'ef-ui-toast-icon', { 'aria-hidden': 'true' }))
     const body = ui.h('div', 'ef-ui-toast-body')
     if (o.title) body.appendChild(ui.h('div', 'ef-ui-toast-title', { text: o.title }))
     body.appendChild(ui.h('div', 'ef-ui-toast-msg', { text: o.message || '' }))
@@ -52,13 +52,14 @@
       if (timer) { clearTimeout(timer); timer = null }
       el.classList.remove('ef-ui-toast-in')
       el.classList.add('ef-ui-toast-out')
+      // Exit transition uses --ef-dur-slow (see ui-overlay.css toast rule).
       setTimeout(function () {
         if (el.parentNode) el.parentNode.removeChild(el)
         if (stackEl && stackEl.children.length === 0 && stackEl.parentNode) {
           stackEl.parentNode.removeChild(stackEl)
           stackEl = null
         }
-      }, 220)
+      }, ui.readNum('--ef-dur-slow', 240))
     }
     x.addEventListener('click', close)
     if (dur > 0) timer = setTimeout(close, dur)
