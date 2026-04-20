@@ -1,165 +1,419 @@
 # editorframe
 
-纯前端、零依赖、零构建的 Blender 风格编辑器 UI 库。
+纯前端、零依赖、零构建的 **Blender 风格编辑器 UI 框架**。
 
-- **零构建**:源码是 IIFE,`tools/build.mjs` 只是 `cat` —— 双击 `index.html` 即可运行
-- **零依赖**:不用 npm / 打包器 / 框架,所有东西挂在 `window.EF` 下
-- **三层架构**:Dock(布局容器)/ Panel(内容单元)/ Widget(UI 组件)
-- **核心机制**:不可变 N 叉分割树 + 约 70 行响应式 signal + 按 dock id 的 keyed reconciliation
-- **完整能力**:split / merge / 跨 dock 拖放 / pop-out 独立窗口 / LRU dispose / focus mode / 两段 toolbar
+[![npm](https://img.shields.io/npm/v/@gooooo/editorframe.svg)](https://www.npmjs.com/package/@gooooo/editorframe)
+[![license](https://img.shields.io/npm/l/@gooooo/editorframe.svg)](./LICENSE)
 
 ---
 
-## 快速开始
+## 理念
 
-### 方式一:直接双击
+你只需要做两件事:
 
-```
-git clone https://gitee.com/lazygoo/editor-frame.git
-cd editor-frame
-open index.html   # 或者 Windows 双击,Linux xdg-open
-```
+1. **用 widget 写内容**  —— 每个 widget 就是一个返回 DOM 元素的函数,用框架自带的 50+ UI 组件或者你自己的组件都行
+2. **用 dock 组织布局** —— 把 widget 放进 panel,把 panel 放进 dock,dock 之间可以分裂、合并、拖拽、弹窗
 
-`dist/ef.{js,css}` 是已提交的产物,无需任何构建步骤。
-
-### 方式二:本地 dev server(推荐)
+整个编辑器就是这样写出来的。
 
 ```
-npx http-server -p 5570
-# 浏览器访问 http://localhost:5570
+Layout(N 叉分割树)
+ └─ Dock ×M            ← 可分裂 / 合并 / 调整大小的矩形容器
+     ├─ Toolbar         ← tab 栏 + 自定义按钮(可选)
+     └─ Panel ×N        ← 每个 panel 装一个 widget,同一时刻只显示 active 那个
 ```
-
-### 方式三:修改源码 + watch 构建
-
-```
-node tools/build.mjs --watch
-```
-
-`src/` 下的源码变动会自动重新拼接到 `dist/ef.{js,css}`;刷新浏览器即可看到效果。**只改 `demo/` 下的文件不需要 rebuild**(demo 是 `<script>` 直接加载的)。
 
 ---
 
-## 最小使用示例
+## 安装
+
+```html
+<!-- CDN(推荐,一行搞定） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gooooo/editorframe@1/dist/ef.css">
+<script src="https://cdn.jsdelivr.net/npm/@gooooo/editorframe@1/dist/ef.js"></script>
+```
+
+```bash
+# 或者 npm
+npm install @gooooo/editorframe
+```
+
+```html
+<!-- 手动下载 dist/ef.js + dist/ef.css 也行 -->
+```
+
+加载后所有 API 挂在 `window.EF` 下。
+
+---
+
+## 快速上手
+
+### 1. 注册 widget
+
+Widget 是编辑器里的一切内容。一个 widget 就是一个 `create` 函数,接收 `props` 和 `ctx`,返回一个 DOM 元素:
+
+```js
+EF.registerWidget('my-editor', {
+  create: function (props, ctx) {
+    var el = document.createElement('div')
+    el.style.padding = '16px'
+    el.textContent = 'Editing: ' + (props.file || 'untitled')
+
+    // ctx.panel 可以读写面板状态
+    ctx.panel.setTitle(props.file || 'New File')
+    ctx.panel.setDirty(false)
+
+    // ctx.dock 可以操作所在 dock
+    // ctx.bus 可以跨面板通讯
+
+    return el
+  },
+  // 可选:面板关闭时清理资源
+  dispose: function (el) { /* ... */ },
+  // 可选:新建面板时的默认参数
+  defaults: function () { return { title: 'Editor', props: { file: '' } } },
+})
+```
+
+注册后这个 widget 可以在任何 dock 里当 panel 用,也可以当 toolbar 组件用。
+
+### 2. 构建布局
+
+用 `split` / `dock` / `panel` 三个工厂函数描述布局树:
+
+```js
+var tree = EF.split('horizontal', [
+  // 左侧：文件树
+  EF.dock({
+    toolbar: { direction: 'top', items: [{ widget: 'tab-standard' }] },
+    panels: [
+      EF.panel({ widget: 'file-tree', title: 'Files' }),
+    ],
+  }),
+  // 右侧：编辑器 + 预览
+  EF.split('vertical', [
+    EF.dock({
+      toolbar: { direction: 'top', items: [{ widget: 'tab-standard' }] },
+      panels: [
+        EF.panel({ widget: 'my-editor', title: 'main.js', props: { file: 'main.js' } }),
+        EF.panel({ widget: 'my-editor', title: 'style.css', props: { file: 'style.css' } }),
+      ],
+    }),
+    EF.dock({
+      toolbar: { direction: 'top', items: [{ widget: 'tab-compact' }] },
+      panels: [
+        EF.panel({ widget: 'preview', title: 'Preview' }),
+      ],
+    }),
+  ], [0.7, 0.3]),
+], [0.25, 0.75])
+```
+
+### 3. 挂载
+
+```js
+var layout = EF.createDockLayout(document.getElementById('app'), { tree: tree })
+```
+
+完成。你已经有一个可以拖拽分割、带 tab 切换的编辑器了。
+
+### 4. 运行时操作
+
+`layout` 返回一个 handle,可以在运行时动态操作布局:
+
+```js
+// 添加新面板
+layout.addPanel('dock-1', { widget: 'my-editor', title: 'new.js', props: { file: 'new.js' } })
+
+// 关闭面板
+layout.removePanel('panel-3')
+
+// 分裂 dock
+layout.splitDock('dock-1', 'horizontal', 'after', 0.5)
+
+// 合并 dock
+layout.mergeDocks('dock-1', 'dock-2')
+```
+
+---
+
+## 核心概念
+
+### Dock —— 容器
+
+Dock 是一个矩形区域,装 0~N 个 panel,同一时刻只显示 active 的那个。Dock 的行为全靠配置:
+
+```js
+EF.dock({
+  // 稳定名称，用于代码中引用（可选）
+  name: 'sidebar',
+
+  // 工具栏：位置 + 组件
+  toolbar: {
+    direction: 'top',        // 'top' | 'bottom' | 'left' | 'right'
+    items: [
+      { widget: 'tab-standard', align: 'start' },  // tab 栏
+      { widget: 'my-toolbar-btn', align: 'end' },   // 自定义按钮
+    ],
+  },
+
+  // 面板白名单：只接受特定 widget 类型（可选，默认接受所有）
+  accept: ['my-editor', 'preview'],
+
+  // 初始面板
+  panels: [ EF.panel({ widget: 'my-editor', title: 'Hello' }) ],
+})
+```
+
+**没有 toolbar = 没有 tab 栏**。如果你的 dock 只需要一个固定面板（比如侧边栏），可以完全不配 toolbar。
+
+**Dock 不是一种类型,是一种配法**。不管你想要 tab 编辑器、工具栏面板、侧边树、底部日志、弹出窗口,都是同一个 `dock()` + 不同的 toolbar/panel 配置。
+
+### Panel —— 内容
+
+Panel 是 widget 的实例化载体。每个 panel 有 id、title、icon、dirty 标记、props 等元数据:
+
+```js
+EF.panel({
+  widget: 'my-editor',          // 已注册的 widget 名（必填）
+  title: 'main.js',             // 标题（默认等于 widget 名）
+  icon: '📄',                   // 图标
+  props: { file: 'main.js' },   // 传给 widget.create() 的参数，必须 JSON 可序列化
+  transient: true,               // 预览模式（斜体 tab，被新的 transient 自动替换）
+})
+```
+
+**非 active 的 panel 不占资源**：框架直接把它的 DOM 从页面摘除（不是 `display:none`），浏览器对它零 layout、零 paint。切回来时原样恢复,所有状态保留。
+
+### Widget —— 组件定义
+
+Widget 通过 `EF.registerWidget(name, spec)` 注册,一次注册,到处使用:
+
+```js
+EF.registerWidget('my-widget', {
+  // 创建 DOM 元素（必需）
+  create: function (props, ctx) {
+    var el = document.createElement('div')
+    // ...
+    return el
+  },
+
+  // 清理资源（可选）
+  dispose: function (el) { /* 取消订阅 / 关 WebSocket / ... */ },
+
+  // 新建时的默认参数（可选，角拖分裂时用）
+  defaults: function () { return { title: 'My Widget', props: {} } },
+
+  // 跨窗口迁移用（可选）
+  serialize: function (el) { return { scrollTop: el.scrollTop } },
+  deserialize: function (el, state) { el.scrollTop = state.scrollTop },
+})
+```
+
+### ctx —— widget 的上下文
+
+widget 的 `create(props, ctx)` 中 `ctx` 暴露了所有框架能力:
+
+```js
+// 面板相关（读写标题、dirty、关闭、弹窗...）
+ctx.panel.title()              // 读标题（signal）
+ctx.panel.setTitle('new name') // 写标题
+ctx.panel.setDirty(true)       // 标记未保存
+ctx.panel.close()              // 关闭自己
+ctx.panel.popOut()             // 弹出为独立窗口
+ctx.panel.promote()            // 从预览升级为常驻
+
+// Dock 相关（读写所在 dock 的状态）
+ctx.dock.panels()              // 当前 dock 的所有 panel（signal）
+ctx.dock.activeId()            // 当前 active panel id（signal）
+ctx.dock.activatePanel(id)     // 切换 active
+ctx.dock.addPanel(partial)     // 在当前 dock 添加新 panel
+ctx.dock.removePanel(id)       // 关闭指定 panel
+ctx.dock.toggleFocus()         // 全屏聚焦当前 dock
+ctx.dock.setCollapsed(bool)    // 折叠/展开 dock
+
+// 跨面板通讯
+ctx.bus.emit('file:saved', { path: '/a.js' })
+ctx.bus.on('file:saved', function (payload) { /* ... */ })  // 面板关闭时自动取消订阅
+
+// 生命周期
+ctx.active                     // signal<boolean>：DOM 是否挂载
+ctx.onCleanup(fn)              // 注册清理函数
+```
+
+---
+
+## 内置 Tab Widget
+
+框架自带三种 tab 组件,直接写在 toolbar items 里用:
+
+| Widget 名 | 效果 |
+|---|---|
+| `tab-standard` | 标准 tab 栏,带关闭按钮 + 新建按钮 |
+| `tab-compact` | 紧凑模式,单 panel 时自动隐藏 tab 栏 |
+| `tab-collapsible` | 点击已激活的 tab 折叠/展开整个 dock |
+
+Tab 不是特殊机制 —— 它就是一个普通的 toolbar widget,订阅了 `ctx.dock.panels` 来渲染 tab 按钮。你可以写自己的 tab 组件完全替换它。
+
+---
+
+## 内置 UI 组件库
+
+`EF.ui.*` 提供 50+ 即用组件,全部基于"调用方持有 signal"的设计:
+
+```js
+var name = EF.signal('world')
+
+// 创建一个输入框,双向绑定到 name signal
+var input = EF.ui.input({ value: name, placeholder: 'Enter name' })
+
+// 创建一个按钮
+var btn = EF.ui.button({ label: 'Greet', onClick: function () { alert('Hello ' + name()) } })
+```
+
+**Base**: button / iconButton / icon / tooltip / popover / kbd / badge / tag / spinner / divider
+**Form**: input / textarea / numberInput / vectorInput / slider / rangeSlider / checkbox / switch / radio / segmented / select / combobox / colorInput / enumInput / tagInput / tab
+**Editor**: gradientInput / curveInput / codeInput / pathInput / fileInput
+**Container**: section / propRow / card / scrollArea / tabPanel
+**Data**（虚拟化）: list / tree / table / breadcrumbs / progressBar
+**Overlay**: menu / modal / drawer / alert / toast
+
+---
+
+## 主题
+
+三套内置主题,通过 `data-ef-theme` 属性切换:
+
+```js
+// Dark（默认,Godot Minimal 风） —— 无需设置
+// Dracula
+document.documentElement.setAttribute('data-ef-theme', 'dracula')
+// Light
+document.documentElement.setAttribute('data-ef-theme', 'light')
+```
+
+所有颜色、间距、圆角、动画时长都是 `--ef-*` CSS 变量,可以单独覆盖:
+
+```css
+:root {
+  --ef-c-accent: #ff6b6b;     /* 换个 accent 色 */
+  --ef-r-2: 8px;               /* 加大圆角 */
+  --ef-dur-slow: 300ms;        /* 放慢动画 */
+}
+```
+
+---
+
+## 完整示例
 
 ```html
 <!DOCTYPE html>
-<link rel="stylesheet" href="./dist/ef.css">
-<div id="app" style="width:100vw;height:100vh"></div>
-<script src="./dist/ef.js"></script>
-<script>
-  // 1. 注册一个 widget
-  EF.registerWidget('hello', {
-    create: function (props, ctx) {
-      const el = document.createElement('div')
-      el.style.padding = '16px'
-      el.textContent = 'Hello from ' + (props.who || 'widget')
-      return el
-    },
-  })
+<html>
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gooooo/editorframe@1/dist/ef.css">
+  <style> html, body { margin: 0; height: 100% } #app { width: 100vw; height: 100vh } </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@gooooo/editorframe@1/dist/ef.js"></script>
+  <script>
+    // 注册 widget
+    EF.registerWidget('note', {
+      create: function (props, ctx) {
+        var el = document.createElement('div')
+        el.style.padding = '16px'
+        var ta = EF.ui.textarea({
+          value: EF.signal(props.text || ''),
+          placeholder: 'Type something...',
+        })
+        el.appendChild(ta)
+        return el
+      },
+      defaults: function () { return { title: 'Note', props: { text: '' } } },
+    })
 
-  // 2. 构造布局树
-  const { createDockLayout, dock, split, panel } = EF
-  const tree = split('horizontal', [
-    dock({
-      name: 'left',
-      toolbar: { direction: 'top', items: [{ widget: 'tab-standard' }] },
-      panels: [ panel({ widget: 'hello', title: 'Hello', props: { who: 'A' } }) ],
-    }),
-    dock({
-      name: 'right',
-      toolbar: { direction: 'top', items: [{ widget: 'tab-standard' }] },
-      panels: [ panel({ widget: 'hello', title: 'World', props: { who: 'B' } }) ],
-    }),
-  ], [0.5, 0.5])
-
-  // 3. 挂载
-  const layout = createDockLayout(document.getElementById('app'), { tree: tree })
-
-  // 4. 运行时可编程
-  layout.addPanel('left', { widget: 'hello', title: 'New', props: { who: 'C' } })
-</script>
+    // 构建布局
+    var layout = EF.createDockLayout(document.getElementById('app'), {
+      tree: EF.split('horizontal', [
+        EF.dock({
+          toolbar: { direction: 'top', items: [{ widget: 'tab-standard' }] },
+          panels: [
+            EF.panel({ widget: 'note', title: 'Note 1', props: { text: 'Hello' } }),
+            EF.panel({ widget: 'note', title: 'Note 2', props: { text: 'World' } }),
+          ],
+        }),
+        EF.dock({
+          toolbar: { direction: 'top', items: [{ widget: 'tab-compact' }] },
+          panels: [
+            EF.panel({ widget: 'note', title: 'Scratch' }),
+          ],
+        }),
+      ], [0.5, 0.5]),
+    })
+  </script>
+</body>
+</html>
 ```
+
+这个例子给你一个双栏编辑器,左边有两个 tab 可切换,右边一个。你可以拖拽中间的分割线调整大小,拖角落的三角拆分/合并 dock。
 
 ---
 
-## 项目结构
+## Dock 的高级能力
 
-```
-src/
-  core/        signal / errors / bus / registry / context
-  tree/        不可变 N 叉分割树 + 所有纯函数写接口
-  dock/        runtime / render / interactions / panel-drag / migrate / layout
-  style/       theme.css(三层 token)+ 各模块 CSS
-  ui/          _internal / base / form / editor / container / data / overlay / panel
-
-demo/          组件浏览器 demo(catalog + state + 5 个 panel widget)
-dist/          已提交的 bundle 产物(ef.js + ef.css)
-tools/
-  build.mjs    零构建的载体 —— `cat` with banners
-doc/
-  editor_style.html   视觉调色板参考
-```
-
-`index.html` 是 demo 入口;`createDockLayout` 是 API 入口(见 `src/dock/layout.js`)。
+| 能力 | 用法 |
+|---|---|
+| **角拖分裂** | 拖拽 dock 角落的三角,把一个 dock 拆成两个 |
+| **边缘合并** | 拖拽三角到相邻 dock,吞并它（dirty panel 有保护） |
+| **跨 dock 拖放** | 拖 tab 到另一个 dock,panel 连同状态一起迁移,零重建 |
+| **弹出独立窗口** | `ctx.panel.popOut()` 或拖 tab 到窗口外 |
+| **Focus 全屏** | `ctx.dock.toggleFocus()`,dock 铺满整个视口 |
+| **折叠** | `ctx.dock.setCollapsed(true)`,dock 缩成一条线 |
+| **预览模式** | `addPanel(id, partial, { transient: true })`,新预览自动替换旧预览 |
+| **Accept 白名单** | `dock({ accept: ['editor'] })`,只接受指定类型的 panel |
+| **LRU 内存控制** | `createDockLayout(el, { tree, lru: { max: 10 } })`，自动淘汰最久未用的非 dirty panel |
 
 ---
 
-## 内置能力
+## 跨面板通讯
 
-**布局**:
-- Dock / Split(N 叉)/ Panel 三层
-- 角拖出 split / 边缘拖 merge(dirty panel 有保护)
-- Splitter 拖拽调整比例
-- Focus mode(`position:fixed` 铺满)、Collapsed(CSS `display:none`)
-- Transient(预览槽)语义:`addPanel(..., { transient: true })` 自动驱逐同 dock 旧的 transient
+`ctx.bus` 是解耦的 pub/sub 总线:
 
-**Panel**:
-- 多 panel + 同时只有一个 active(非 active 的 DOM 完全 detach,零 layout / 零 paint)
-- 跨 dock 拖放(内部走 detach + re-attach,不重建 widget)
-- Pop-out 独立窗口(BroadcastChannel + `serialize` / `deserialize`)
-- LRU dispose(`lru.max = N`;dirty panel 永不被淘汰)
-- Accept 白名单(`dock.accept = ['xxx']`,同时约束拖放和 addPanel)
+```js
+// 面板 A：发布事件
+ctx.bus.emit('file:saved', { path: '/main.js' })
 
-**Widget / UI 组件库**(`EF.ui.*`,50+ 个):
-- **Base**:button / iconButton / icon / tooltip / popover / kbd / badge / tag / spinner / divider
-- **Form**:input / textarea / numberInput / vectorInput / slider / rangeSlider / checkbox / switch / radio / segmented / select / combobox / colorInput / enumInput / tagInput / tab
-- **Editor**:gradientInput / curveInput / codeInput / pathInput / fileInput
-- **Container**:section / propRow / card / scrollArea / tabPanel
-- **Data**(全部虚拟化):list / tree / table / breadcrumbs / progressBar
-- **Overlay**:menu / modal / drawer / alert / toast(焦点陷阱 + LIFO 栈 + 统一 portal)
+// 面板 B：订阅事件（面板关闭时自动取消）
+ctx.bus.on('file:saved', function (data) {
+  console.log('Saved:', data.path)
+})
+```
 
-全部基于 caller-owned `value: signal<T>` 的"信号优先"设计,组件不持有自己的 state。
-
-**主题 / 配置**:
-- `src/style/theme.css` 三层 token:原子色 → 角色色 → 组件 token
-- 三套内置主题(`documentElement[data-ef-theme]` 切换):
-  - **Dark(默认,无属性)** —— Godot Minimal 风:`#272727` 中性炭灰 + `#569eff` 冷蓝 accent,"inset 输入框"(字段比面板更深)
-  - **Dracula**(`data-ef-theme="dracula"`) —— 更冷调的深灰 + `#7b6ef6` 紫,"raised 输入框"(字段比面板更亮)+ 更深阴影
-  - **Light**(`data-ef-theme="light"`) —— 白面板 + 浅灰 inset 字段 + `#5b4ee0` 深紫 accent
-- 所有可调数值(drag 阈值、动画时长、z-index、图标字符)都是 `--ef-*` CSS 变量。JS 侧通过 `EF.ui.readNum(name, fallback)` 读取,换主题 / 换图标集只改 theme.css 一份
+Signal 适合**状态**（有当前值,晚订阅也能读到），Bus 适合**事件**（一次性通知,错过不补）。
 
 ---
 
-## 开发规范(摘要)
+## 本地开发
 
-完整规范见 [`CLAUDE.md`](./CLAUDE.md) —— 本文件是项目的唯一设计权威。
+```bash
+git clone https://gitee.com/lazygoo/editor-frame.git
+cd editor-frame
+node tools/build.mjs --watch     # src/ 变动自动重新拼接到 dist/
+npx http-server -p 5570          # 浏览器访问 http://localhost:5570
+```
 
-- **零 ES modules**:所有源文件是 IIFE,挂 `window.EF`
-- **不写应用级快捷键**:本库只暴露 API(如 `ctx.dock.toggleFocus()`),由调用方决定绑不绑键
-- **不写防御性代码**:框架内部相互调用是受信任契约;用户 widget 边界才用 `safeCall` 包裹
-- **不写自动化测试**:验证靠 `index.html` demo + DevTools
-- **改 `src/` 必须 rebuild**:`node tools/build.mjs` 重新生成 `dist/`
-- **Widget 引用永远是 string**:`panel.widget` / `toolbarItem.widget` 必须是已注册名;tree 严格 JSON 可序列化
+`demo/` 下的文件不进 bundle,改完 reload 即可。
 
 ---
 
 ## 许可
 
-内部项目。
+[MIT](./LICENSE) © gooooo
 
 ---
 
-## 更多阅读
+## 更多
 
-- [`CLAUDE.md`](./CLAUDE.md) —— 设计文档 / 架构决策 / 数据模型 / 实现顺序(唯一设计权威)
+- [`CLAUDE.md`](./CLAUDE.md) —— 完整架构设计 / 数据模型 / 所有 API 定义
 - [`doc/editor_style.html`](./doc/editor_style.html) —— 视觉调色板参考
+- [`index.html`](./index.html) —— 组件浏览器 demo（50+ UI 组件现场演示）

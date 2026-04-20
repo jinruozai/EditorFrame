@@ -1,0 +1,10 @@
+# 只发布 files 里白名单的东西,这里是额外保险
+demo/
+.claude/
+doc/
+index.html
+*.log
+.DS_Store
+.git/
+.gitignore
+node_modules/

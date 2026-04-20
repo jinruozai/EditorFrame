@@ -1,0 +1,47 @@
+{
+  "name": "@gooooo/editorframe",
+  "version": "1.0.0",
+  "description": "Blender-style dock layout UI framework — zero build, zero dependencies, pure IIFE. Drop-in <script> tag, everything hangs on window.EF.",
+  "main": "dist/ef.js",
+  "style": "dist/ef.css",
+  "files": [
+    "dist",
+    "src",
+    "tools",
+    "README.md",
+    "CLAUDE.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dock",
+    "layout",
+    "panel",
+    "split",
+    "editor-ui",
+    "blender",
+    "godot",
+    "iife",
+    "zero-build",
+    "zero-dependency",
+    "ui-framework",
+    "frontend"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitee.com/lazygoo/editor-frame.git"
+  },
+  "homepage": "https://gitee.com/lazygoo/editor-frame",
+  "bugs": {
+    "url": "https://gitee.com/lazygoo/editor-frame/issues"
+  },
+  "author": "gooooo",
+  "license": "MIT",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "watch": "node tools/build.mjs --watch"
+  },
+  "sideEffects": [
+    "dist/ef.css",
+    "dist/ef.js"
+  ]
+}
