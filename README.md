@@ -377,11 +377,20 @@ var btn = EF.ui.button({ label: 'Greet', onClick: function () { alert('Hello ' +
 ```
 
 **Base**: button / iconButton / icon / tooltip / popover / kbd / badge / tag / spinner / divider
-**Form**: input / textarea / numberInput / vectorInput / slider / rangeSlider / checkbox / switch / radio / segmented / select / combobox / colorInput / enumInput / tagInput / tab
-**Editor**: gradientInput / curveInput / codeInput / pathInput / fileInput
+**Form**: input / textarea / numberInput / vectorInput / slider / rangeSlider / checkbox / switch / radio / segmented / select / combobox / colorInput / dateInput / enumInput / tagInput / tab
+**Editor**: gradientInput / curveInput / codeInput / pathInput / fileInput / assetPicker
 **Container**: section / propRow / card / scrollArea / tabPanel
 **Data**（虚拟化）: list / tree / table / breadcrumbs / progressBar
 **Overlay**: menu / modal / drawer / alert / toast
+**Schema-driven**: **propertyEditor** / **propertyPanel** + **TypeConfig**（`setTypeConfig` / `resolveFieldDef` / `registerRenderer`）— declare a StructDef, get the whole inspector form for free
+
+### 图标集
+
+`ui.icon({ name: 'search' })` resolves to a framework-bundled [Lucide](https://lucide.dev) SVG icon (ISC-licensed, ~40 curated glyphs). `iconButton` / tab widgets accept the same name strings. Override or extend:
+
+```js
+EF.ui.registerIcon('my-icon', '<path d="M10 5v14"/>')
+```
 
 ---
 

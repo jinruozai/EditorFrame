@@ -52,6 +52,7 @@ const JS_ORDER = [
   'ui/_internal/_overlay.js',
 
   // Layer 6 — UI library: base
+  'ui/base/icon-set.js',   // default icon registry (Lucide subset)
   'ui/base/icon.js',
   'ui/base/button.js',
   'ui/base/iconButton.js',
@@ -77,9 +78,15 @@ const JS_ORDER = [
   'ui/form/select.js',
   'ui/form/combobox.js',
   'ui/form/colorInput.js',
+  'ui/form/dateInput.js',
   'ui/form/enumInput.js',
   'ui/form/tagInput.js',
   'ui/form/tab.js',
+  // TypeConfig + schema-driven property editing (depends on all form widgets
+  // above — it dispatches to them). Keep at the end of the form layer.
+  'ui/form/typeconfig.js',
+  'ui/form/propertyEditor.js',
+  'ui/form/propertyPanel.js',
 
   // Layer 8 — UI library: editor specials
   'ui/editor/gradientInput.js',
@@ -87,6 +94,7 @@ const JS_ORDER = [
   'ui/editor/codeInput.js',
   'ui/editor/pathInput.js',
   'ui/editor/fileInput.js',
+  'ui/editor/assetPicker.js',
 
   // Layer 9 — UI library: containers
   'ui/container/section.js',

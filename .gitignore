@@ -4,3 +4,6 @@ Thumbs.db
 .idea/
 .vscode/
 node_modules/
+
+# Project-local scratch for reviewing third-party projects that use this lib.
+/temp/

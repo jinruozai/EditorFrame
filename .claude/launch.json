@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "http-server", ".", "-p", "5570", "-c-1", "--silent"],
       "port": 5570
+    },
+    {
+      "name": "gde",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "./temp/GameDataEditor", "-p", "5571", "-c-1", "--silent"],
+      "port": 5571
     }
   ]
 }

@@ -1,14 +1,36 @@
 // EF.ui.colorInput — color swatch + popover with HSV picker + hex input.
 //
-// opts: { value: signal<string>, onChange?, format?: 'hex' | 'rgba' }   (default 'hex')
+// opts:
+//   value:     string|int|signal   hex ("#rrggbb") or 24-bit int (0xRRGGBB)
+//   onChange?: (v) => void
+//   valueKind?: 'hex' | 'int'      (default 'hex')   how the bound signal holds the value
+//
+// With valueKind='int', the signal stores an integer 0..0xFFFFFF. The swatch
+// and picker internally work in hex strings; round-trip conversion happens at
+// the signal boundary.
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
+  function toHexStr(v) {
+    if (typeof v === 'number') {
+      const n = Math.max(0, Math.min(0xffffff, Math.trunc(v || 0)))
+      let s = n.toString(16); while (s.length < 6) s = '0' + s
+      return '#' + s
+    }
+    return v
+  }
+
   ui.colorInput = function (opts) {
     const o = opts || {}
-    const sig = ui.asSig(o.value != null ? o.value : '#7b6ef6')
-    const doWrite = ui.writer(sig, o.onChange, 'ui.colorInput')
+    const valueKind = o.valueKind === 'int' ? 'int' : 'hex'
+    const sig = ui.asSig(o.value != null ? o.value : (valueKind === 'int' ? 0x7b6ef6 : '#7b6ef6'))
+    const rawWrite = ui.writer(sig, o.onChange, 'ui.colorInput')
+    // Internal API operates on hex strings; translate to/from int at the edge.
+    function doWrite(hex) {
+      if (valueKind === 'int') rawWrite(parseInt(hex.slice(1), 16))
+      else rawWrite(hex)
+    }
 
     const el = ui.h('div', 'ef-ui-color')
     const swatch = ui.h('div', 'ef-ui-color-swatch')
@@ -16,12 +38,19 @@
     el.appendChild(swatch); el.appendChild(text)
 
     ui.bind(el, sig, function (v) {
-      swatch.style.background = v
-      if (document.activeElement !== text) text.value = v
+      const hex = toHexStr(v)
+      swatch.style.background = hex
+      if (document.activeElement !== text) text.value = valueKind === 'int' ? String(v) : hex
     })
     text.addEventListener('input', function () {
-      const v = text.value.trim()
-      if (/^#[0-9a-f]{6}$/i.test(v) || /^#[0-9a-f]{3}$/i.test(v)) doWrite(v)
+      const raw = text.value.trim()
+      // Accept "#rrggbb" / "#rgb" / a plain integer literal.
+      if (/^#[0-9a-f]{6}$/i.test(raw) || /^#[0-9a-f]{3}$/i.test(raw)) {
+        doWrite(raw)
+      } else if (/^\d+$/.test(raw)) {
+        const hex = toHexStr(parseInt(raw, 10))
+        doWrite(hex)
+      }
     })
 
     let pop = null
@@ -38,7 +67,9 @@
   function openPicker(anchor, sig, doWrite, onClose) {
     const wrap = ui.h('div', 'ef-ui-color-picker')
 
-    const hsv = hexToHsv(sig.peek()) || { h: 0, s: 1, v: 1 }
+    // The picker always works in hex internally; int-valued signals get
+    // translated at the boundary by doWrite().
+    const hsv = hexToHsv(toHexStr(sig.peek())) || { h: 0, s: 1, v: 1 }
     const sigH = EF.signal(hsv.h)
     const sigS = EF.signal(hsv.s)
     const sigV = EF.signal(hsv.v)

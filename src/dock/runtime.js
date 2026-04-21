@@ -304,11 +304,20 @@
   // Generic widget materialization — used by panel, static toolbar, and
   // dynamic toolbar runtimes. Wraps spec.create in safeCall so a buggy widget
   // produces a visible error stub instead of breaking the framework.
+  //
+  // The entire create() runs inside EF.untracked — reconcile invokes this
+  // from within its own effect, and we don't want incidental ctx.* signal
+  // reads (e.g. `ctx.panel.title()` for a guard check, or `ctx.dock.panels()`
+  // in a toolbar tab widget) to leak into the reconcile effect's dep set.
+  // Any real reactivity must go through EF.effect explicitly inside the
+  // widget body, which establishes its own effect scope.
   function materializeWidgetEl(runtime, srcExtra) {
     const spec = EF.resolveWidget(runtime.widget)
     const src = Object.assign({ scope: 'widget', widget: runtime.widget }, srcExtra || {})
     const el = EF.safeCall(src, function () {
-      return spec.create(runtime.props || (runtime.data && runtime.data.peek().props) || {}, runtime.ctx)
+      return EF.untracked(function () {
+        return spec.create(runtime.props || (runtime.data && runtime.data.peek().props) || {}, runtime.ctx)
+      })
     })
     runtime.contentEl = el || makeErrorEl(runtime.widget)
   }

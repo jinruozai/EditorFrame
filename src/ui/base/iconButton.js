@@ -27,8 +27,11 @@
     ui.bindClass(el, kind, 'ef-ui-btn-')
     ui.bindAttr(el, disabled, 'disabled')
 
-    // Inner icon element tracks both glyph and size via the same signals.
-    el.appendChild(ui.icon({ glyph: icon, size: size }))
+    // Inner icon tracks both name (registered SVG) and size via the same
+    // signals. `icon` is forwarded as `name` — ui.icon resolves it to a
+    // registered SVG first; otherwise falls back to rendering the value as
+    // a text glyph, so legacy single-char values like '＋' still work.
+    el.appendChild(ui.icon({ name: icon, size: size }))
 
     if (o.onClick) el.addEventListener('click', function (e) { if (!el.disabled) o.onClick(e) })
     return el

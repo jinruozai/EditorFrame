@@ -1039,6 +1039,34 @@ editorframe/
     - rebuild:`dist/ef.css` 从 ~68K → 83010 bytes(三主题块 + light 显式锁定 role 映射)
     - README.md + CLAUDE.md § 3.1 注释 + § 3.2 主题段均同步
 
+15. **v1.1.0 — TypeConfig / propertyPanel / icon set / framework hardening**(2026-04-21):
+    - 缘起:审计第三方项目 `GameDataEditor` 对库的用法(`temp/GameDataEditor/`),暴露 4 个框架级问题 + 7 个项目级错用。用户拍板把合理能力补进库、把不合理用法在项目里修掉
+    - **F1 — splitter collapsed dock 挤出视口**:复盘发现是项目 `#app { height: 100vh }` 在 topbar 之下仍然占满视口,不是框架 bug。改 `#app { height: 100% }` 继承父 `.gde-body` 的高度就好。框架侧 `canCollapseDock` + `flex: 0 0 auto` 的折叠逻辑本身正确
+    - **F2 — `--ef-bg-raised` + `--ef-shadow-raised` role**:补"浮起卡片"语义(一步 LIGHTER 于 dock body 的背景,配合 subtle shadow)。dark/dracula/light 三主题各显式声明。消费者:项目 `.gde-card` 一键升级
+    - **F3 — SVG 图标库 + `EF.ui.registerIcon`**(方案 C):
+      - 新 `src/ui/base/icon-set.js` 内嵌 Lucide ISC-licensed 精选子集 ~40 个(plus/minus/x/check/chevron-{up,down,left,right}/search/filter/folder/file/trash/edit/copy/save/refresh/arrow-{left,right}/arrow-up-down/table/database/columns/grid/list/image/music/calendar/clock/info/alert-{triangle,circle}/check-circle/help-circle/menu/more-{horizontal,vertical}/maximize/minimize/eye/eye-off/settings/user/hash/tag/link/type/palette)
+      - `ui.icon({ name })` 优先 resolve 到注册的 SVG,fallback 到 `glyph` 文本(legacy),再 fallback 到把 name 自身当字符显示 —— 老代码 `ui.icon({ glyph:'＋' })` 不回归
+      - `EF.ui.registerIcon(name, innerMarkup)` 允许用户覆盖 / 扩展
+      - `iconButton` / `tab` widget 的 icon 字段都走 name → SVG 路径;CSS `.ef-ui-icon svg { width:1em; height:1em }` + 按 size 变体 sm/md/lg 跟 `var(--ef-size-icon-*)`
+    - **F4 — TypeConfig + propertyEditor + propertyPanel(核心新一等能力)**:
+      - `src/ui/form/typeconfig.js`:`EF.ui.setTypeConfig(builtin, { overrides })` / `resolveType` / `resolveFieldDef` / `registerRenderer` / `getRenderer` / `listRenderKinds`。内置默认 builtin(int/float/string/struct/array/var/enum_int/enum_string/range_int/range_float/id/ref_id/color/img/snd/date/bool)
+      - `src/ui/form/propertyEditor.js`:`EF.ui.propertyEditor(fieldDef, value, onChange, ctx)` 把一个字段分发到已注册 renderer。内建 14 种 renderer(input_string/textarea/input_int/input_float/range/enum/toggle/color/date/img/snd/id/ref_id/struct/array),全部复用 `EF.ui.*` 基础组件,**不写一个裸 `<input>`**
+      - `src/ui/form/propertyPanel.js`:`EF.ui.propertyPanel({ schema, value, onChange, ctx })` 从 `StructDef` 自动生成一整张 "label · editor" 表单。value/schema 可以是 plain 对象也可以是 signal,内部 `EF.effect` 跟踪重建
+      - CSS `.ef-ui-prop-{panel,row,label,cell,empty}` / `.ef-ui-struct-*` / `.ef-ui-array-*` 补到 ui-form.css
+      - 业务项目的 450 行 `renderers.js` → 彻底作废,改用 `ui.propertyPanel` + `ui.registerRenderer` 自定义覆盖 `ref_id`(跨表跳转)就搞定
+    - **F5 — 补缺组件**:
+      - `ui.dateInput`:基于原生 `<input type=date>` + `.ef-ui-field` 外框,支持 value/min/max/disabled signal
+      - `ui.assetPicker`:路径 input + 预览缩略图 + browse 按钮,`kind: 'image'|'audio'|'file'`,`onBrowse` hook 允许调用方接自定义 picker 对话框,缺省 fallback 到 hidden `<input type=file>`
+      - `ui.numberInput` 扩展 `radix: 'dec'|'hex'|'bin'` + `percent` —— fmt/parse/commit 分支处理
+      - `ui.colorInput` 扩展 `valueKind: 'hex'|'int'` —— 24-bit int(0xRRGGBB) / hex string 双模式,swatch/picker 内部统一 hex,边界翻译
+    - **Framework 硬化**(发现的两个 reactive bug):
+      - `EF.untracked(fn)` 新增:运行 fn 时把 `currentEffect = null`,读 signal 不会订阅外层 effect。用于"在 effect scope 里执行不应建立响应关系的代码"
+      - `dock/runtime.js` 的 `materializeWidgetEl` 把 `safeCall(create)` 包在 `EF.untracked(...)` 里 —— widget.create 在 reconcile effect 内被调用,widget 代码的 ctx.* 读取不应让 reconcile 订阅无关 signal,否则后续 signal.set 会引发递归 reconcile(发现时的症状:"Maximum call stack size exceeded at materializeWidgetEl")
+      - `core/bus.js` 的 `emit()` 把每个 handler 也包在 `untracked(...)` 里 —— bus 语义就是 fire-and-forget,handler 读 signal 不应把它订阅到上游 effect(症状:发射 'selection:changed' 的 effect 被订阅到 handler 读的 `State.gameData` 上,后续 `setEntityField` 写 gameData → 反向触发 effect 内 doWrite → onChange → setEntityField → loop)
+    - `tools/build.mjs` JS_ORDER 把 `ui/base/icon-set.js` 排在 `ui/base/icon.js` 前,`ui/form/dateInput.js` 放到 colorInput 后,`ui/form/typeconfig.js`/`propertyEditor.js`/`propertyPanel.js` 放在 tab.js 后(form layer 末),`ui/editor/assetPicker.js` 放在 fileInput 后
+    - README / package.json 版本 1.0.0 → 1.1.0
+    - 配合 `temp/GameDataEditor/` 改造(删 gde-log → 用内置 'log' / emoji → framework icon 名 / renderers.js 瘦成 2 个工具函数 / inspector 改用 propertyPanel);自动验证点击 card → Inspector 渲染 10 个字段 iron sword 编辑器零报错
+
 **下一步给下个 Claude 的提示**:
 - 进项目第一件事:`node tools/build.mjs --watch` + `.claude/launch.json` 的 `ef-demo`(端口 5570)
 - 改 `src/` 下文件**必须 rebuild**;改 `demo/` 文件只需 reload

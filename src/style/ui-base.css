@@ -16,6 +16,15 @@
 .ef-ui-icon-md { font-size: var(--ef-size-icon-md); min-width: var(--ef-size-icon-md); }
 .ef-ui-icon-lg { font-size: var(--ef-size-icon-lg); min-width: var(--ef-size-icon-lg); }
 
+/* SVG icons (registered via EF.ui.registerIcon) — size-track the font size
+ * of the host span so the same size scale applies to text glyphs and SVG
+ * interchangeably. stroke uses currentColor so the icon colors follow text. */
+.ef-ui-icon svg { width: 1em; height: 1em; display: block; }
+.ef-ui-icon-svg { /* marker class; no style beyond svg sizing above */ }
+.ef-ui-icon-sm svg { width: var(--ef-size-icon-sm); height: var(--ef-size-icon-sm); }
+.ef-ui-icon-md svg { width: var(--ef-size-icon-md); height: var(--ef-size-icon-md); }
+.ef-ui-icon-lg svg { width: var(--ef-size-icon-lg); height: var(--ef-size-icon-lg); }
+
 /* ── button ───────────────────────────────────────── */
 .ef-ui-btn {
   position: relative;

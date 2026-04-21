@@ -94,9 +94,23 @@
     return read
   }
 
+  // untracked(fn) — run fn with no `currentEffect`, so any signal reads
+  // inside it subscribe NO effect. Used by the framework wherever code that
+  // *might* do reads is invoked from inside an owning effect you don't want
+  // to pollute. Widget.create is the canonical case — it runs inside the
+  // reconcile effect, but widget code shouldn't accidentally subscribe
+  // reconcile to user-owned signals. Any real reactivity should go through
+  // EF.effect inside the widget, where it creates its own effect scope.
+  function untracked(fn) {
+    const prev = currentEffect
+    currentEffect = null
+    try { return fn() } finally { currentEffect = prev }
+  }
+
   EF.signal    = signal
   EF.effect    = effect
   EF.derived   = derived
   EF.onCleanup = onCleanup
   EF.batch     = batch
+  EF.untracked = untracked
 })(window.EF = window.EF || {})

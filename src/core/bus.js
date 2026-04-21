@@ -36,8 +36,19 @@
     if (!set) return
     // Snapshot before iteration: handlers may unsubscribe themselves.
     const list = Array.from(set)
+    // Run EACH handler inside an untracked scope. Reason: emit() is often
+    // called transitively from within an effect body (e.g. a signal write
+    // that a bus handler consumes → handler reads other signals → those
+    // signal reads would otherwise subscribe the OUTER effect to those
+    // signals, causing the effect to re-run on unrelated state changes and
+    // cascade into infinite loops). Bus handlers are semantically fire-and-
+    // forget — they should never act as reactivity bridges. If a handler
+    // needs reactivity, it establishes its own EF.effect explicitly.
+    const untracked = EF.untracked || function (fn) { return fn() }
     for (let i = 0; i < list.length; i++) {
-      EF.safeCall({ scope: 'bus', topic: topic }, function () { list[i](payload) })
+      EF.safeCall({ scope: 'bus', topic: topic }, function () {
+        untracked(function () { list[i](payload) })
+      })
     }
   }
 

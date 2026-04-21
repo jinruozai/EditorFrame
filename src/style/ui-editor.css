@@ -319,3 +319,40 @@
   text-align: center;
   word-break: break-all;
 }
+
+/* ── ui.assetPicker — path text + preview thumbnail + browse button ───── */
+.ef-ui-asset-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ef-space-1);
+  padding: 2px;
+  min-width: 0;
+}
+.ef-ui-asset-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: var(--ef-r-2);
+  background: repeating-linear-gradient(45deg,
+    var(--ef-bg-0) 0, var(--ef-bg-0) 3px,
+    var(--ef-bg-2) 3px, var(--ef-bg-2) 6px);
+  color: var(--ef-fg-3);
+  cursor: pointer;
+  overflow: hidden;
+}
+.ef-ui-asset-preview:hover { color: var(--ef-accent); }
+.ef-ui-asset-preview img { width: 100%; height: 100%; object-fit: cover; }
+.ef-ui-asset-path {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* ── ui.dateInput — native date field, framed like ui.input ──────────── */
+.ef-ui-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(.5);
+  opacity: .75;
+}
+.ef-ui-date-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }

@@ -37,6 +37,31 @@
   const ui = EF.ui = EF.ui || {}
 
   ui.tab = function (opts) {
+    // Paint a name-or-glyph value into an icon host span. If the value is a
+    // registered icon name, swap contents for the SVG; otherwise treat as
+    // text (emoji / single-char glyph).
+    function paintIcon(host, value) {
+      if (!host) return
+      const v = value || ''
+      if (v && ui._hasIcon && ui._hasIcon(v)) {
+        while (host.firstChild) host.removeChild(host.firstChild)
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        svg.setAttribute('viewBox', '0 0 24 24')
+        svg.setAttribute('fill', 'none')
+        svg.setAttribute('stroke', 'currentColor')
+        svg.setAttribute('stroke-width', '2')
+        svg.setAttribute('stroke-linecap', 'round')
+        svg.setAttribute('stroke-linejoin', 'round')
+        svg.setAttribute('aria-hidden', 'true')
+        svg.innerHTML = ui._getIcon(v)
+        host.appendChild(svg)
+        host.classList.add('ef-ui-icon-svg')
+      } else {
+        host.classList.remove('ef-ui-icon-svg')
+        host.textContent = v
+      }
+    }
+
     const o = opts || {}
     const itemsSig  = ui.asSig(o.items  != null ? o.items  : [])
     const activeSig = ui.asSig(o.active != null ? o.active : null)
@@ -139,11 +164,14 @@
         last.title = title
       }
       if (last.icon !== icon) {
+        // Resolve icon: if it's a registered name, paint the SVG; otherwise
+        // render as text (single-char glyph / emoji). In iconOnly mode we
+        // always need *something* — fall back to the title's first char.
+        const effective = icon || (iconOnly ? title.charAt(0).toUpperCase() : '')
+        paintIcon(e.iconEl, effective)
         if (iconOnly) {
-          // iconOnly mode: always show icon glyph (fall back to title char).
-          e.iconEl.textContent = icon || (title.charAt(0).toUpperCase())
-        } else if (icon) {
-          e.iconEl.textContent = icon
+          // iconOnly keeps iconEl mounted regardless.
+        } else if (effective) {
           if (!e.iconEl.parentNode) e.btn.insertBefore(e.iconEl, e.titleEl)
         } else if (e.iconEl.parentNode) {
           e.iconEl.remove()

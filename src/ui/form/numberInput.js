@@ -15,7 +15,14 @@
 //   min?: number|signal, max?: number|signal, step?: number|signal,
 //   precision?: number|signal,
 //   suffix?: string|signal, label?: string|signal,
+//   radix?: 'dec' | 'hex' | 'bin'       // integer display base (default 'dec')
+//   percent?: boolean                   // display float × 100 + "%" (float only)
 // }
+//
+// `radix` and `percent` only affect what the user SEES / TYPES in the text
+// field. The committed signal value is always a plain number (integer for
+// hex/bin, fractional [0..1] for percent). Scrub / nudge use the raw value
+// directly, unaware of the display format.
 //
 // Note: min/max/step are live signals — changing them at runtime re-clamps
 // the displayed value and re-quantizes future scrub/nudge sessions.
@@ -32,6 +39,8 @@
     const precS  = ui.asSig(o.precision != null ? o.precision : null)  // null = derive
     const label  = ui.asSig(o.label     != null ? o.label     : '')
     const suffix = ui.asSig(o.suffix    != null ? o.suffix    : '')
+    const radix   = o.radix   || 'dec'              // construction-time, not reactive
+    const percent = !!o.percent
     const doWrite = ui.writer(sig, o.onChange, 'ui.numberInput')
 
     const el  = ui.h('div', 'ef-ui-num')
@@ -54,11 +63,48 @@
       return stepS.peek() >= 1 ? 0 : 3
     }
     function clamp(v) { return Math.max(minS.peek(), Math.min(maxS.peek(), v)) }
-    function fmt(v)   { return Number(v).toFixed(prec()) }
+    function fmt(v) {
+      const n = Number(v) || 0
+      if (radix === 'hex') {
+        const i = Math.trunc(n)
+        return (i < 0 ? '-' : '') + '0x' + Math.abs(i).toString(16)
+      }
+      if (radix === 'bin') {
+        const i = Math.trunc(n)
+        return (i < 0 ? '-' : '') + '0b' + Math.abs(i).toString(2)
+      }
+      if (percent) return (n * 100).toFixed(prec()) + '%'
+      return n.toFixed(prec())
+    }
+    function parseInput(s) {
+      s = String(s).trim()
+      if (!s) return 0
+      if (radix === 'hex' || radix === 'bin') {
+        let sign = 1; if (s[0] === '-') { sign = -1; s = s.slice(1) }
+        const base = radix === 'hex' ? 16 : 2
+        const body = /^0[xb]/i.test(s) ? s.slice(2) : s
+        const n = parseInt(body, base)
+        return Number.isFinite(n) ? sign * n : 0
+      }
+      if (percent) {
+        const stripped = s.replace(/%$/, '')
+        const n = Number(stripped)
+        if (!Number.isFinite(n)) return 0
+        return /%$/.test(s) ? n / 100 : n
+      }
+      const n = Number(s)
+      return Number.isFinite(n) ? n : 0
+    }
     function commit(v) {
-      const n = clamp(Number(v))
+      const raw = typeof v === 'string' ? parseInput(v) : Number(v)
+      const n = clamp(raw)
       if (!Number.isFinite(n)) return
-      doWrite(Number(fmt(n)))
+      // For hex/bin we keep integer precision; for percent the signal holds the
+      // raw fraction, not the displayed "N%". Round-trip through fmt only for
+      // the default decimal path (preserves precision-field contract).
+      if (radix === 'hex' || radix === 'bin') doWrite(Math.trunc(n))
+      else if (percent) doWrite(Number(n.toFixed(prec() + 2)))
+      else doWrite(Number(n.toFixed(prec())))
     }
 
     let editing = false

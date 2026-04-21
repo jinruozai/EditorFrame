@@ -68,6 +68,10 @@
   --ef-bg-2: var(--ef-c-01);   /* input fields, inset wells */
   --ef-bg-3: var(--ef-c-04);   /* hover surfaces, dropdowns */
   --ef-bg-4: var(--ef-c-05);   /* active surfaces */
+  /* "Raised" surface — one step LIGHTER than dock body (bg-1). Reserved
+   * for floating cards that should feel lifted off the panel. Pair with
+   * --ef-shadow-raised. Distinct from bg-3 (hover) semantically. */
+  --ef-bg-raised: var(--ef-c-04);
 
   /* Foreground emphasis ramp (strongest → most muted). */
   --ef-fg-0: var(--ef-c-11);   /* primary text */
@@ -161,6 +165,8 @@
   --ef-shadow-2: 0 2px 6px rgba(0,0,0,.30);
   --ef-shadow-3: 0 4px 14px rgba(0,0,0,.40);
   --ef-shadow-4: 0 8px 24px rgba(0,0,0,.50);
+  /* Raised card shadow — subtle lift, not a modal drop. */
+  --ef-shadow-raised: 0 1px 2px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.22);
 
   /* ── Layer 3 — Component-specific (rare; only if not a role) ───── */
   --ef-toolbar-h:    28px;
@@ -222,6 +228,7 @@
   --ef-bg-2: var(--ef-c-03);   /* input (lighter than panel) */
   --ef-bg-3: var(--ef-c-05);
   --ef-bg-4: var(--ef-c-06);
+  --ef-bg-raised: var(--ef-c-03);   /* raised cards sit above bg-1 */
 
   --ef-border:        var(--ef-c-03);
   --ef-border-strong: var(--ef-c-05);
@@ -233,6 +240,7 @@
   --ef-shadow-2: 0 2px 8px rgba(0,0,0,.5);
   --ef-shadow-3: 0 4px 16px rgba(0,0,0,.6);
   --ef-shadow-4: 0 8px 32px rgba(0,0,0,.7);
+  --ef-shadow-raised: 0 1px 2px rgba(0,0,0,.30), 0 2px 6px rgba(0,0,0,.35);
 }
 
 /* ── Light theme — only the primitives flip; roles inherit. ────────── */
@@ -272,10 +280,13 @@
   --ef-bg-2: var(--ef-c-03);   /* input = light gray (inset) */
   --ef-bg-3: var(--ef-c-05);
   --ef-bg-4: var(--ef-c-06);
+  --ef-bg-raised: var(--ef-c-02);   /* slightly off-white to separate from bg-1 */
 
   --ef-border:        var(--ef-c-03);
   --ef-border-strong: var(--ef-c-05);
   --ef-border-input:  var(--ef-c-05);
+
+  --ef-shadow-raised: 0 1px 2px rgba(20,20,40,.08), 0 2px 6px rgba(20,20,40,.10);
 
   --ef-fg-1: #2a2a30;
   --ef-accent-fg: #ffffff;
