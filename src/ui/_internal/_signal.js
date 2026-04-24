@@ -43,12 +43,17 @@
   // Caller contract (§ signal contract C): returns the function a component
   // should call to write a new value. Throws at construction if no write path
   // is available — no runtime defensive `typeof .set` checks anywhere.
+  //
+  // Writes execute in `EF.untracked` scope so the caller's onChange (which may
+  // read outer signals as part of persisting state) never silently subscribes
+  // the effect that invoked the write. Same principle as `bus.emit` handlers
+  // and `materializeWidgetEl` — a write is a side effect, not a computation.
   function writer(sig, onChange, name) {
-    if (typeof onChange === 'function') return onChange
-    if (typeof sig === 'function' && typeof sig.set === 'function') {
-      return function (v) { sig.set(v) }
-    }
-    throw new Error((name || 'ui') + ': `value` must be a writable signal or `onChange` is required')
+    const write = (typeof onChange === 'function')
+      ? onChange
+      : (typeof sig === 'function' && typeof sig.set === 'function' ? sig.set : null)
+    if (!write) throw new Error((name || 'ui') + ': `value` must be a writable signal or `onChange` is required')
+    return function (v) { EF.untracked(function () { write(v) }) }
   }
   ui.writer = writer
 

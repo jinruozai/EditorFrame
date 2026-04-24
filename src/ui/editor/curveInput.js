@@ -6,26 +6,26 @@
 //   • Responsive — canvas fills the component; ResizeObserver keeps DPR crisp.
 //   • Drag either handle to shape the curve. Hover highlights the nearest handle.
 //   • Grid, guide lines, accent-stroked bezier, filled handles.
-//   • Optional preset chip row via `opts.presets: true` (Linear/Ease/In/Out/In-Out).
-//     Defaults to off — the library default is the minimal curve editor.
 //
+// Applying named presets is an application concern, not a UI chrome concern —
+// callers just write to the signal: `sig.set(EF.ui.curvePresets.ease)`. Common
+// values are exposed as `EF.ui.curvePresets` for convenience.
 ;(function (EF) {
   'use strict'
   const ui = EF.ui = EF.ui || {}
 
-  const PRESETS = [
-    { name: 'Linear',  v: [0.00, 0.00, 1.00, 1.00] },
-    { name: 'Ease',    v: [0.25, 0.10, 0.25, 1.00] },
-    { name: 'In',      v: [0.42, 0.00, 1.00, 1.00] },
-    { name: 'Out',     v: [0.00, 0.00, 0.58, 1.00] },
-    { name: 'In-Out',  v: [0.42, 0.00, 0.58, 1.00] },
-  ]
+  ui.curvePresets = {
+    linear: [0.00, 0.00, 1.00, 1.00],
+    ease:   [0.25, 0.10, 0.25, 1.00],
+    in:     [0.42, 0.00, 1.00, 1.00],
+    out:    [0.00, 0.00, 0.58, 1.00],
+    inOut:  [0.42, 0.00, 0.58, 1.00],
+  }
 
   ui.curveInput = function (opts) {
     const o = opts || {}
     const sig = ui.asSig(o.value != null ? o.value : [0.42, 0, 0.58, 1])
     const doWrite = ui.writer(sig, o.onChange, 'ui.curveInput')
-    const showPresets = !!o.presets
 
     const el     = ui.h('div', 'ef-ui-curve')
     const cvWrap = ui.h('div', 'ef-ui-curve-canvas-wrap')
@@ -171,6 +171,14 @@
     ro.observe(cvWrap)
     ui.collect(el, function () { ro.disconnect() })
 
+    // Safety net: ResizeObserver's first callback can be missed when the
+    // element is constructed off-DOM and mounted in the same frame — the
+    // browser resolves layout, but RO's delivery is scheduled for the
+    // next rAF and occasionally lands before the element has a non-zero
+    // rect. A one-shot rAF resize guarantees the canvas bitmap is sized
+    // from real measurements before any draw. Idempotent with RO.
+    requestAnimationFrame(resize)
+
     ui.bind(el, sig, draw)
 
     // Unified pointer session: move = hover + drag, down = capture + drag.
@@ -229,17 +237,6 @@
         draw()
       }
     })
-
-    // Preset chips — opt-in via opts.presets. Library default is minimal.
-    if (showPresets) {
-      const presets = ui.h('div', 'ef-ui-curve-presets')
-      PRESETS.forEach(function (p) {
-        const btn = ui.h('button', 'ef-ui-curve-preset', { type: 'button', text: p.name })
-        btn.addEventListener('click', function () { doWrite(p.v.slice()) })
-        presets.appendChild(btn)
-      })
-      el.appendChild(presets)
-    }
 
     return el
   }

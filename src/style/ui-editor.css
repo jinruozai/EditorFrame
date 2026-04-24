@@ -120,6 +120,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  height: 100%;                    /* fill parent when parent has a definite height */
   min-width: 180px;
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
@@ -128,12 +129,16 @@
   gap: var(--ef-space-1);
   box-sizing: border-box;
 }
+/* Canvas area grows/shrinks with the available height after the (optional)
+   presets row + padding. No aspect-ratio: that locks the intrinsic height to
+   100% of width, which overflows short parents (the demo's 220×160 cell was
+   getting a 220-tall canvas = ~60px overflow before this). min-height gives
+   a sensible floor when the parent is auto-sized. */
 .ef-ui-curve-canvas-wrap {
   position: relative;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 160px;
-  aspect-ratio: 1 / 1;
+  min-height: 120px;
 }
 .ef-ui-curve-canvas {
   position: absolute;
@@ -144,33 +149,6 @@
   cursor: crosshair;
   border-radius: var(--ef-r-1);
 }
-.ef-ui-curve-presets {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-.ef-ui-curve-preset {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 22px;
-  padding: 0 var(--ef-space-2);
-  background: var(--ef-bg-3);
-  border: 1px solid var(--ef-border-input);
-  border-radius: var(--ef-r-1);
-  color: var(--ef-fg-2);
-  font: var(--ef-fs-xs) var(--ef-font-ui);
-  cursor: pointer;
-  transition: background var(--ef-dur-fast) var(--ef-ease),
-              color      var(--ef-dur-fast) var(--ef-ease),
-              border-color var(--ef-dur-fast) var(--ef-ease),
-              transform var(--ef-dur-fast) var(--ef-ease);
-}
-.ef-ui-curve-preset:hover {
-  background: var(--ef-accent-bg);
-  border-color: var(--ef-accent-soft);
-  color: var(--ef-fg-0);
-}
-.ef-ui-curve-preset:active { transform: scale(0.94); }
 
 /* ── codeInput ──────────────────────────────────────────────────── */
 .ef-ui-code {
@@ -299,11 +277,6 @@
               border var(--ef-dur-fast) var(--ef-ease);
 }
 .ef-ui-fileinput:hover { border-color: var(--ef-accent-soft); background: var(--ef-bg-3); }
-.ef-ui-fileinput-over {
-  background: var(--ef-accent-bg);
-  border-color: var(--ef-accent);
-  border-style: solid;
-}
 .ef-ui-fileinput-label {
   display: flex;
   flex-direction: column;
@@ -332,16 +305,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px; height: 28px; flex-shrink: 0;
-  border-radius: var(--ef-r-2);
+  width: 20px; height: 20px; flex-shrink: 0;
+  border-radius: var(--ef-r-1, 2px);
   background: repeating-linear-gradient(45deg,
-    var(--ef-bg-0) 0, var(--ef-bg-0) 3px,
-    var(--ef-bg-2) 3px, var(--ef-bg-2) 6px);
+    var(--ef-bg-0) 0, var(--ef-bg-0) 2px,
+    var(--ef-bg-2) 2px, var(--ef-bg-2) 4px);
   color: var(--ef-fg-3);
-  cursor: pointer;
+  cursor: grab;
   overflow: hidden;
 }
 .ef-ui-asset-preview:hover { color: var(--ef-accent); }
+.ef-ui-asset-preview:active { cursor: grabbing; }
 .ef-ui-asset-preview img { width: 100%; height: 100%; object-fit: cover; }
 .ef-ui-asset-path {
   border: 0 !important;

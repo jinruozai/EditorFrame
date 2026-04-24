@@ -500,7 +500,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-toolbar {
   display: flex;
   flex-shrink: 0;
-  background: var(--ef-bg-0);
+  background: var(--ef-bg-raised);
   align-items: stretch;
   user-select: none;
   min-height: var(--ef-toolbar-h);
@@ -573,6 +573,25 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
  * Buttons, icons, tooltips, popovers, kbd, badges, tags, spinners, dividers.
  * All values are theme tokens (var(--ef-*)). No literals.
  */
+
+/* ── dropzone / dragsource (ui._dnd.js) ────────────────────────────
+ * Generic HTML5-DnD feedback classes. Applied to whatever element the
+ * caller passed to ui.dropzone / ui.dragsource; never assumes a role-
+ * specific container. outline (not border) so we don't perturb layout
+ * when the class is added/removed mid-drag.
+ */
+.ef-ui-dropzone-active {
+  outline: 2px dashed var(--ef-accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--ef-accent) 10%, transparent);
+}
+.ef-ui-dropzone-reject {
+  outline: 2px dashed var(--ef-error);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--ef-error) 8%, transparent);
+  cursor: not-allowed;
+}
+.ef-ui-dragging { opacity: 0.55; }
 
 /* ── icon ─────────────────────────────────────────── */
 .ef-ui-icon {
@@ -1135,6 +1154,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-check-mark {
   position: relative;
   width: 16px; height: 16px;
+  flex: 0 0 auto;                   /* never let narrow rows squash the mark into an ellipse */
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-2);
@@ -1186,6 +1206,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-switch-track {
   position: relative;
   width: 30px; height: 16px;
+  flex: 0 0 auto;                   /* fixed-geometry indicator — no flex-shrink */
   background: var(--ef-bg-3);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-pill);
@@ -1196,12 +1217,15 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-switch:hover .ef-ui-switch-track { border-color: var(--ef-c-07); }
 .ef-ui-switch-knob {
   position: absolute;
-  left: 1px; top: 1px;
+  top: 50%;                       /* vertical centering: independent of knob/track sizes */
+  transform: translateY(-50%);
+  left: 1px;                       /* 1px gap from the track's left inner edge */
   width: 12px; height: 12px;
   background: var(--ef-fg-0);
   border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 0 0 0 transparent;
-  transition: left var(--ef-dur-med) cubic-bezier(.34,1.56,.64,1),
+  transition: left  var(--ef-dur-med) cubic-bezier(.34,1.56,.64,1),
+              right var(--ef-dur-med) cubic-bezier(.34,1.56,.64,1),
               width var(--ef-dur-fast) var(--ef-ease),
               background var(--ef-dur-med) var(--ef-ease);
 }
@@ -1212,15 +1236,34 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--ef-accent) 30%, transparent),
               inset 0 1px 2px rgba(0,0,0,.2);
 }
-.ef-ui-switch-on .ef-ui-switch-knob { left: 15px; background: #fff; }
-.ef-ui-switch:active.ef-ui-switch-on .ef-ui-switch-knob { left: 11px; }
+/* On-state: anchor to the right edge with the same 1px inset as the left.
+   The active squish (width: 16) still widens the knob; anchoring to `right`
+   means the growing width extends leftward — matching the off-state spring
+   without hardcoding pixel offsets. */
+.ef-ui-switch-on .ef-ui-switch-knob {
+  left: auto;
+  right: 1px;
+  background: #fff;
+}
 .ef-ui-switch-box:focus-visible + .ef-ui-switch-track {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ef-accent) 30%, transparent);
 }
 
 /* ── radio ──────────────────────────────────────────────────────── */
-.ef-ui-radio-group { display: inline-flex; gap: var(--ef-space-3); }
-.ef-ui-radio-vertical { flex-direction: column; gap: var(--ef-space-1); }
+/* flex-wrap so narrow containers push whole items onto a new row instead of
+   horizontally squashing the dots into ovals. row-gap controls the spacing
+   between wrapped lines; column-gap keeps horizontal spacing unchanged. */
+.ef-ui-radio-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  column-gap: var(--ef-space-3);
+  row-gap: var(--ef-space-1);
+}
+.ef-ui-radio-vertical {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  row-gap: var(--ef-space-1);
+}
 .ef-ui-radio {
   display: inline-flex;
   align-items: center;
@@ -1232,6 +1275,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-radio-box { position: absolute; opacity: 0; width: 0; height: 0; }
 .ef-ui-radio-dot {
   width: 14px; height: 14px;
+  flex: 0 0 auto;                   /* fixed-geometry indicator — no flex-shrink */
   border: 1px solid var(--ef-border-input);
   background: var(--ef-bg-2);
   border-radius: 50%;
@@ -1243,6 +1287,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
               transform    var(--ef-dur-fast) var(--ef-ease),
               box-shadow   var(--ef-dur-med) var(--ef-ease);
 }
+.ef-ui-radio-label { white-space: nowrap; }
 .ef-ui-radio-dot::after {
   content: '';
   width: 6px; height: 6px;
@@ -1354,12 +1399,19 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 }
 .ef-ui-select-open .ef-ui-select-arrow { transform: rotate(180deg); }
 
-/* Menu used by select / combobox / overlay menu. */
+/* Menu used by select / combobox / overlay menu. Lives in the portal root,
+ * which has no background of its own — without an explicit fill, the menu
+ * shows whatever is behind it. Use `--ef-bg-raised` so the menu reads as a
+ * lifted surface above any panel and stays legible across all themes. */
 .ef-ui-menu {
   display: flex;
   flex-direction: column;
   padding: var(--ef-space-1);
   min-width: 120px;
+  background: var(--ef-bg-raised);
+  border: 1px solid var(--ef-border);
+  border-radius: var(--ef-r-2);
+  box-shadow: var(--ef-shadow-md);
 }
 .ef-ui-menu-item {
   display: inline-flex;
@@ -1583,6 +1635,8 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   gap: var(--ef-space-1);
   padding: 0 var(--ef-space-3);
   height: var(--ef-tab-h);
+  min-width: 80px;
+  justify-content: center;
   background: transparent;
   border: 0;
   border-right: 1px solid var(--ef-border);
@@ -1696,11 +1750,12 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   color: var(--ef-fg-0);
 }
 
-/* compact variant — tighter padding, smaller glyph */
+/* compact variant — tighter padding, smaller glyph, no min-width */
 .ef-ui-tab-compact .ef-ui-tab-btn {
   height: calc(var(--ef-tab-h) - 4px);
   padding: 0 var(--ef-space-2);
   font-size: var(--ef-fs-sm);
+  min-width: 0;
 }
 
 /* vertical (auto for sidebar) */
@@ -1727,6 +1782,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   padding: 0;
   width: 32px;
   height: 32px;
+  min-width: 0;
   gap: 0;
 }
 .ef-ui-tab-icon-only .ef-ui-tab-icon { font-size: 16px; }
@@ -1766,63 +1822,58 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   overflow: auto;
 }
 
-/* ─── ui.propertyPanel + propertyEditor (schema-driven forms) ────── */
-.ef-ui-prop-panel { display: flex; flex-direction: column; min-width: 0; }
-.ef-ui-prop-panel-rows { display: flex; flex-direction: column; }
-.ef-ui-prop-row {
-  display: grid;
-  grid-template-columns: minmax(90px, 120px) minmax(0, 1fr);
-  gap: var(--ef-space-2);
-  align-items: center;
-  padding: var(--ef-space-1) 0;
-}
-.ef-ui-prop-label {
-  font: var(--ef-fs-sm) var(--ef-font-ui);
-  color: var(--ef-fg-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: help;
-}
-.ef-ui-prop-cell { min-width: 0; }
-.ef-ui-prop-cell > * { width: 100%; max-width: 100%; box-sizing: border-box; }
-.ef-ui-prop-panel-empty {
-  padding: var(--ef-space-4);
-  text-align: center;
-  color: var(--ef-fg-3);
-  font: var(--ef-fs-sm) var(--ef-font-ui);
-}
-
-/* Struct + array editors (recursive property editors). */
-.ef-ui-struct,
-.ef-ui-array {
+/* ─── ui.structInput / ui.arrayInput / ui.propertyPanel ────────────
+   Base appearance is the "nested" framed look, used anywhere these
+   components are embedded inside a larger form. ui.propertyPanel (which
+   wraps a top-level structInput) overrides those base styles below to get
+   the wider "inspector" layout. */
+.ef-ui-struct-input,
+.ef-ui-array-input {
   border: 1px solid var(--ef-border);
   border-radius: var(--ef-r-2);
   padding: var(--ef-space-1) var(--ef-space-2);
   background: color-mix(in srgb, var(--ef-bg-0) 50%, transparent);
 }
-.ef-ui-struct-row,
-.ef-ui-array-row {
+.ef-ui-struct-input-row,
+.ef-ui-array-input-row {
   display: grid;
-  grid-template-columns: 70px minmax(0, 1fr) auto;
   gap: var(--ef-space-1);
   align-items: center;
   padding: 2px 0;
 }
-.ef-ui-struct-label,
-.ef-ui-array-index {
+.ef-ui-struct-input-row { grid-template-columns: 70px minmax(0, 1fr); }
+.ef-ui-array-input-row  { grid-template-columns: auto minmax(0, 1fr) auto; }
+.ef-ui-struct-input-label,
+.ef-ui-array-input-index {
   font: var(--ef-fs-sm) var(--ef-font-mono);
   color: var(--ef-fg-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ef-ui-struct-cell,
-.ef-ui-array-cell { min-width: 0; }
-.ef-ui-struct-cell > *,
-.ef-ui-array-cell > * { width: 100%; max-width: 100%; box-sizing: border-box; }
-.ef-ui-array-items { display: flex; flex-direction: column; gap: 2px; }
-.ef-ui-array-add { align-self: flex-start; margin-top: var(--ef-space-1); }
+.ef-ui-struct-input-cell,
+.ef-ui-array-input-cell { min-width: 0; }
+.ef-ui-struct-input-cell > *,
+.ef-ui-array-input-cell > * { width: 100%; max-width: 100%; box-sizing: border-box; }
+.ef-ui-array-input-rows { display: flex; flex-direction: column; gap: 2px; }
+.ef-ui-array-input-add { align-self: flex-start; margin-top: var(--ef-space-1); }
+
+.ef-ui-property-panel { display: flex; flex-direction: column; min-width: 0; }
+.ef-ui-property-panel > .ef-ui-struct-input {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.ef-ui-property-panel > .ef-ui-struct-input > .ef-ui-struct-input-row {
+  grid-template-columns: minmax(90px, 120px) minmax(0, 1fr);
+  gap: var(--ef-space-2);
+  padding: var(--ef-space-1) 0;
+}
+.ef-ui-property-panel > .ef-ui-struct-input > .ef-ui-struct-input-row > .ef-ui-struct-input-label {
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-2);
+  cursor: help;
+}
 
 /* ════ style/ui-editor.css ════ */
 /* editorframe — UI library: editor specials */
@@ -1947,6 +1998,7 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   display: flex;
   flex-direction: column;
   width: 100%;
+  height: 100%;                    /* fill parent when parent has a definite height */
   min-width: 180px;
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
@@ -1955,12 +2007,16 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   gap: var(--ef-space-1);
   box-sizing: border-box;
 }
+/* Canvas area grows/shrinks with the available height after the (optional)
+   presets row + padding. No aspect-ratio: that locks the intrinsic height to
+   100% of width, which overflows short parents (the demo's 220×160 cell was
+   getting a 220-tall canvas = ~60px overflow before this). min-height gives
+   a sensible floor when the parent is auto-sized. */
 .ef-ui-curve-canvas-wrap {
   position: relative;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 160px;
-  aspect-ratio: 1 / 1;
+  min-height: 120px;
 }
 .ef-ui-curve-canvas {
   position: absolute;
@@ -1971,33 +2027,6 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   cursor: crosshair;
   border-radius: var(--ef-r-1);
 }
-.ef-ui-curve-presets {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-.ef-ui-curve-preset {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 22px;
-  padding: 0 var(--ef-space-2);
-  background: var(--ef-bg-3);
-  border: 1px solid var(--ef-border-input);
-  border-radius: var(--ef-r-1);
-  color: var(--ef-fg-2);
-  font: var(--ef-fs-xs) var(--ef-font-ui);
-  cursor: pointer;
-  transition: background var(--ef-dur-fast) var(--ef-ease),
-              color      var(--ef-dur-fast) var(--ef-ease),
-              border-color var(--ef-dur-fast) var(--ef-ease),
-              transform var(--ef-dur-fast) var(--ef-ease);
-}
-.ef-ui-curve-preset:hover {
-  background: var(--ef-accent-bg);
-  border-color: var(--ef-accent-soft);
-  color: var(--ef-fg-0);
-}
-.ef-ui-curve-preset:active { transform: scale(0.94); }
 
 /* ── codeInput ──────────────────────────────────────────────────── */
 .ef-ui-code {
@@ -2126,11 +2155,6 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
               border var(--ef-dur-fast) var(--ef-ease);
 }
 .ef-ui-fileinput:hover { border-color: var(--ef-accent-soft); background: var(--ef-bg-3); }
-.ef-ui-fileinput-over {
-  background: var(--ef-accent-bg);
-  border-color: var(--ef-accent);
-  border-style: solid;
-}
 .ef-ui-fileinput-label {
   display: flex;
   flex-direction: column;
@@ -2159,16 +2183,17 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px; height: 28px; flex-shrink: 0;
-  border-radius: var(--ef-r-2);
+  width: 20px; height: 20px; flex-shrink: 0;
+  border-radius: var(--ef-r-1, 2px);
   background: repeating-linear-gradient(45deg,
-    var(--ef-bg-0) 0, var(--ef-bg-0) 3px,
-    var(--ef-bg-2) 3px, var(--ef-bg-2) 6px);
+    var(--ef-bg-0) 0, var(--ef-bg-0) 2px,
+    var(--ef-bg-2) 2px, var(--ef-bg-2) 4px);
   color: var(--ef-fg-3);
-  cursor: pointer;
+  cursor: grab;
   overflow: hidden;
 }
 .ef-ui-asset-preview:hover { color: var(--ef-accent); }
+.ef-ui-asset-preview:active { cursor: grabbing; }
 .ef-ui-asset-preview img { width: 100%; height: 100%; object-fit: cover; }
 .ef-ui-asset-path {
   border: 0 !important;
@@ -2245,7 +2270,12 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ef-ui-prop-control { display: flex; min-width: 0; overflow: hidden; }
+/* `min-width: 0` is what lets the flex child shrink past its intrinsic
+   content width. `overflow: hidden` would additionally clip — and it bites
+   absolutely-positioned control parts that legitimately extend outside the
+   flow (slider thumb at value 0/1, color-picker popovers, etc). Leave the
+   shrink semantics, drop the clip. */
+.ef-ui-prop-control { display: flex; min-width: 0; }
 .ef-ui-prop-control > * { flex: 1 1 auto; min-width: 0; max-width: 100%; }
 
 /* ── card ───────────────────────────────────────────────────────── */
@@ -2319,32 +2349,130 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 }
 
 /* ── tree ───────────────────────────────────────────────────────── */
+.ef-ui-tree {
+  position: relative;
+  height: 240px;
+  overflow-y: auto;
+  background: var(--ef-bg-1);
+  border: 1px solid var(--ef-border);
+  border-radius: var(--ef-r-2);
+  outline: none;
+}
+/* Container focus ring — keyboard only. :focus alone would light up on
+   every row click (since the tree is tabIndex=0 to receive key events),
+   which reads as a stray outer selection. :focus-visible suppresses that
+   path while preserving keyboard accessibility. */
+.ef-ui-tree:focus-visible { box-shadow: 0 0 0 2px var(--ef-accent-soft, var(--ef-accent)); }
+.ef-ui-tree-spacer { position: relative; width: 100%; }
+.ef-ui-tree-window {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  will-change: transform;
+}
 .ef-ui-tree-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 22px;
   width: 100%;
+  padding-right: 4px;
   font: var(--ef-fs-sm) var(--ef-font-ui);
   color: var(--ef-fg-1);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
+  box-sizing: border-box;
+  position: relative;
 }
 .ef-ui-tree-row:hover { background: var(--ef-hover); color: var(--ef-fg-0); }
 .ef-ui-tree-row-active { background: var(--ef-selected); color: var(--ef-fg-0); }
+.ef-ui-tree-row-focused { outline: 1px solid var(--ef-accent); outline-offset: -1px; }
+.ef-ui-tree-row-disabled { opacity: 0.45; cursor: default; }
+.ef-ui-tree-row-dragging { opacity: 0.4; }
 .ef-ui-tree-arrow {
-  display: inline-block;
-  width: 12px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  flex: 0 0 auto;
+  width: 14px; height: 14px;
   color: var(--ef-fg-2);
   font-size: 9px;
   cursor: pointer;
+  border-radius: var(--ef-r-1, 2px);
+}
+.ef-ui-tree-arrow:hover { color: var(--ef-fg-0); background: var(--ef-bg-3); }
+.ef-ui-tree-leading,
+.ef-ui-tree-icon {
+  display: inline-flex; align-items: center;
+  flex: 0 0 auto;
+  color: var(--ef-fg-2);
 }
 .ef-ui-tree-label {
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.ef-ui-tree-trailing {
+  display: inline-flex; align-items: center;
+  flex: 0 0 auto;
+  color: var(--ef-fg-3);
+}
+.ef-ui-tree-actions {
+  display: inline-flex; align-items: center; gap: 2px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  transition: opacity var(--ef-dur-fast, 80ms);
+}
+.ef-ui-tree-actions[data-visibility="hover"] { opacity: 0; }
+.ef-ui-tree-row:hover .ef-ui-tree-actions[data-visibility="hover"] { opacity: 1; }
+.ef-ui-tree-actions[data-visibility="selected"] { opacity: 0; }
+.ef-ui-tree-row-active .ef-ui-tree-actions[data-visibility="selected"] { opacity: 1; }
+.ef-ui-tree-match {
+  background: color-mix(in srgb, var(--ef-accent) 30%, transparent);
+  color: var(--ef-fg-0);
+  border-radius: var(--ef-r-1, 2px);
+  padding: 0 1px;
+}
+.ef-ui-tree-row-matched { /* subtle tint when in highlight mode */ }
+
+/* DnD indicator + ghost — live in a fixed portal, document-relative */
+.ef-ui-tree-dnd-portal { font: var(--ef-fs-sm) var(--ef-font-ui); }
+.ef-ui-tree-ghost-wrap {
+  position: fixed; left: 0; top: 0;
+  transform: translate(0, 0);
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0.9;
+}
+.ef-ui-tree-ghost {
+  background: var(--ef-bg-raised, var(--ef-bg-2));
+  color: var(--ef-fg-0);
+  border: 1px solid var(--ef-accent);
+  border-radius: var(--ef-r-2);
+  padding: 4px 10px;
+  box-shadow: var(--ef-shadow-lg, 0 8px 24px rgba(0,0,0,0.4));
+  font-weight: 500;
+}
+.ef-ui-tree-drop-indicator {
+  position: fixed;
+  pointer-events: none;
+  background: var(--ef-accent);
+  border-radius: 1px;
+  box-shadow: 0 0 4px var(--ef-accent);
+  transition: opacity var(--ef-dur-fast, 80ms);
+}
+.ef-ui-tree-drop-indicator.ef-ui-tree-drop-inside {
+  background: transparent;
+  border: 2px solid var(--ef-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ef-accent) 30%, transparent);
+  border-radius: var(--ef-r-2);
+}
+.ef-ui-tree-drop-indicator.ef-ui-tree-drop-reject {
+  background: var(--ef-error);
+  box-shadow: 0 0 4px var(--ef-error);
+}
+.ef-ui-tree-drop-indicator.ef-ui-tree-drop-inside.ef-ui-tree-drop-reject {
+  background: transparent;
+  border-color: var(--ef-error);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ef-error) 30%, transparent);
 }
 
 /* ── table ──────────────────────────────────────────────────────── */
@@ -2416,22 +2544,29 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-crumbs-last { color: var(--ef-fg-0); font-weight: 600; }
 .ef-ui-crumbs-sep { color: var(--ef-fg-3); }
 
-/* ── progressBar ────────────────────────────────────────────────── */
-.ef-ui-progress {
-  position: relative;
+/* ── progressBar (linear + circle, sm/md/lg, default/success/warn/error) ── */
+.ef-ui-progress { position: relative; color: var(--ef-accent); }
+.ef-ui-progress-kind-success { color: var(--ef-success); }
+.ef-ui-progress-kind-warn    { color: var(--ef-warn); }
+.ef-ui-progress-kind-error   { color: var(--ef-error); }
+
+/* Linear */
+.ef-ui-progress-linear {
   width: 100%;
-  height: 6px;
   background: var(--ef-bg-2);
   border-radius: var(--ef-r-pill);
   overflow: hidden;
 }
+.ef-ui-progress-linear.ef-ui-progress-sm { height: 4px; }
+.ef-ui-progress-linear.ef-ui-progress-md { height: 6px; }
+.ef-ui-progress-linear.ef-ui-progress-lg { height: 10px; }
 .ef-ui-progress-fill {
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  background: var(--ef-accent);
+  background: currentColor;
   transition: width var(--ef-dur-med) var(--ef-ease);
 }
-.ef-ui-progress-ind .ef-ui-progress-fill {
+.ef-ui-progress-linear.ef-ui-progress-ind .ef-ui-progress-fill {
   width: 30% !important;
   animation: ef-progress-ind 1.4s ease-in-out infinite;
 }
@@ -2439,9 +2574,39 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(400%); }
 }
+
+/* Circle */
+.ef-ui-progress:not(.ef-ui-progress-linear) { display: inline-flex; align-items: center; justify-content: center; }
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-sm { width: 28px; height: 28px; }
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-md { width: 40px; height: 40px; }
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-lg { width: 64px; height: 64px; }
+.ef-ui-progress-svg {
+  width: 100%; height: 100%;
+  transform: rotate(-90deg);                    /* 0% starts at 12 o'clock */
+}
+.ef-ui-progress-track-arc {
+  stroke: var(--ef-bg-2);
+  stroke-width: 3;
+}
+.ef-ui-progress-fill-arc {
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--ef-dur-med) var(--ef-ease);
+}
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-ind .ef-ui-progress-svg {
+  animation: ef-progress-spin 1s linear infinite;
+}
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-ind .ef-ui-progress-fill-arc {
+  stroke-dasharray: 25 75 !important;
+}
+@keyframes ef-progress-spin { to { transform: rotate(270deg); } }
+
 @media (prefers-reduced-motion: reduce) {
   .ef-ui-progress-ind .ef-ui-progress-fill { animation: none; width: 100% !important; }
+  .ef-ui-progress-ind .ef-ui-progress-svg  { animation: none; }
 }
+
 .ef-ui-progress-label {
   position: absolute;
   left: 50%; top: 50%;
@@ -2473,10 +2638,8 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
 .ef-ui-errlog .ef-ui-scrollarea {
   flex: 1 1 auto;
   min-height: 0;
-  padding: var(--ef-space-2);
   display: flex;
   flex-direction: column;
-  gap: var(--ef-space-2);
 }
 .ef-ui-errlog-empty {
   color: var(--ef-fg-2);
@@ -2485,31 +2648,30 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   padding: var(--ef-space-3);
 }
 .ef-ui-errlog-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ef-space-2);
+  padding: 3px var(--ef-space-2);
+  border-bottom: 1px solid var(--ef-border);
   cursor: pointer;
-  border-color: var(--ef-border);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
   transition: background var(--ef-dur-fast) var(--ef-ease);
+  min-height: 22px;
 }
 .ef-ui-errlog-row:hover {
   background: var(--ef-bg-2);
 }
 .ef-ui-errlog-row-error {
-  border-color: color-mix(in srgb, var(--ef-error) 40%, var(--ef-border));
-  background: var(--ef-error-bg);
+  background: color-mix(in srgb, var(--ef-error) 8%, transparent);
 }
 .ef-ui-errlog-row-error:hover {
   background: color-mix(in srgb, var(--ef-error) 18%, var(--ef-bg-2));
 }
 .ef-ui-errlog-row-warn {
-  border-color: color-mix(in srgb, var(--ef-warn) 40%, var(--ef-border));
-  background: color-mix(in srgb, var(--ef-warn) 10%, var(--ef-bg-1));
-}
-.ef-ui-errlog-head {
-  display: flex;
-  gap: var(--ef-space-2);
-  align-items: center;
-  margin-bottom: 2px;
+  background: color-mix(in srgb, var(--ef-warn) 8%, transparent);
 }
 .ef-ui-errlog-level {
+  flex: 0 0 auto;
   font: var(--ef-fs-xs) var(--ef-font-mono);
   letter-spacing: .04em;
   padding: 1px var(--ef-space-1);
@@ -2534,22 +2696,19 @@ body.ef-dragging-vertical,   body.ef-dragging-vertical *   { cursor: ns-resize !
   color: var(--ef-fg-3);
 }
 .ef-ui-errlog-src {
+  flex: 0 0 auto;
   color: var(--ef-fg-3);
   font: var(--ef-fs-xs) var(--ef-font-mono);
   text-transform: uppercase;
   letter-spacing: .04em;
 }
 .ef-ui-errlog-msg {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--ef-fg-0);
-  font: var(--ef-fs-sm) var(--ef-font-ui);
-}
-.ef-ui-errlog-stk {
-  color: var(--ef-fg-2);
-  font: var(--ef-fs-xs)/var(--ef-lh-base) var(--ef-font-mono);
-  white-space: pre-wrap;
-  margin: var(--ef-space-1) 0 0;
-  max-height: 100px;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ════ style/ui-overlay.css ════ */

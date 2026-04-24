@@ -4,6 +4,25 @@
  * All values are theme tokens (var(--ef-*)). No literals.
  */
 
+/* ── dropzone / dragsource (ui._dnd.js) ────────────────────────────
+ * Generic HTML5-DnD feedback classes. Applied to whatever element the
+ * caller passed to ui.dropzone / ui.dragsource; never assumes a role-
+ * specific container. outline (not border) so we don't perturb layout
+ * when the class is added/removed mid-drag.
+ */
+.ef-ui-dropzone-active {
+  outline: 2px dashed var(--ef-accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--ef-accent) 10%, transparent);
+}
+.ef-ui-dropzone-reject {
+  outline: 2px dashed var(--ef-error);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--ef-error) 8%, transparent);
+  cursor: not-allowed;
+}
+.ef-ui-dragging { opacity: 0.55; }
+
 /* ── icon ─────────────────────────────────────────── */
 .ef-ui-icon {
   display: inline-flex;

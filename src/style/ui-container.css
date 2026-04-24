@@ -58,7 +58,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ef-ui-prop-control { display: flex; min-width: 0; overflow: hidden; }
+/* `min-width: 0` is what lets the flex child shrink past its intrinsic
+   content width. `overflow: hidden` would additionally clip — and it bites
+   absolutely-positioned control parts that legitimately extend outside the
+   flow (slider thumb at value 0/1, color-picker popovers, etc). Leave the
+   shrink semantics, drop the clip. */
+.ef-ui-prop-control { display: flex; min-width: 0; }
 .ef-ui-prop-control > * { flex: 1 1 auto; min-width: 0; max-width: 100%; }
 
 /* ── card ───────────────────────────────────────────────────────── */

@@ -1,4 +1,6 @@
-// EF.ui.fileInput — drop zone + click-to-pick file input.
+// EF.ui.fileInput — drop zone + click-to-pick file input. Uses the shared
+// ui.dropzone primitive so OS file drops and the reject/accept affordance
+// stay consistent with every other asset-aware widget.
 //
 // opts: { value: signal<File|null>, onChange?, accept?, multiple? }
 //   value: if multiple, signal holds File[]; otherwise File or null.
@@ -35,11 +37,10 @@
 
     el.addEventListener('click', function () { inp.click() })
     inp.addEventListener('change', function () { update(inp.files) })
-    el.addEventListener('dragover', function (e) { e.preventDefault(); el.classList.add('ef-ui-fileinput-over') })
-    el.addEventListener('dragleave', function () { el.classList.remove('ef-ui-fileinput-over') })
-    el.addEventListener('drop', function (e) {
-      e.preventDefault(); el.classList.remove('ef-ui-fileinput-over')
-      update(e.dataTransfer.files)
+
+    ui.dropzone(el, {
+      accept: ['Files'],
+      onDrop: function (d) { if (d.files) update(d.files) },
     })
 
     return el

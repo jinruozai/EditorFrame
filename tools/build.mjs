@@ -50,6 +50,7 @@ const JS_ORDER = [
   'ui/_internal/_drag.js',
   'ui/_internal/_signal.js',
   'ui/_internal/_overlay.js',
+  'ui/_internal/_dnd.js',
 
   // Layer 6 — UI library: base
   'ui/base/icon-set.js',   // default icon registry (Lucide subset)
@@ -85,7 +86,9 @@ const JS_ORDER = [
   // TypeConfig + schema-driven property editing (depends on all form widgets
   // above — it dispatches to them). Keep at the end of the form layer.
   'ui/form/typeconfig.js',
-  'ui/form/propertyEditor.js',
+  'ui/form/structInput.js',
+  'ui/form/arrayInput.js',
+  'ui/form/editorFor.js',
   'ui/form/propertyPanel.js',
 
   // Layer 8 — UI library: editor specials
@@ -106,6 +109,7 @@ const JS_ORDER = [
   // Layer 10 — UI library: data
   'ui/data/list.js',
   'ui/data/tree.js',
+  'ui/data/tree-dnd.js',
   'ui/data/table.js',
   'ui/data/breadcrumbs.js',
   'ui/data/progressBar.js',

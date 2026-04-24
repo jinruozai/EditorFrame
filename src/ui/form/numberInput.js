@@ -108,10 +108,23 @@
     }
 
     let editing = false
-    // Re-render when value OR min/max/step/precision changes.
+    // Re-render when value OR min/max/step/precision changes. When min/max
+    // changes we also re-clamp — but only if the current value is finite.
+    // Otherwise clamp(undefined)=NaN would write NaN back, which cascades
+    // through any caller-supplied onChange and, if that onChange re-derives
+    // our sig via a signal graph, produces an infinite re-entrant write. The
+    // caller owns what "undefined" means — don't auto-coerce it.
+    function reclamp() {
+      if (editing) return
+      const cur = sig.peek()
+      if (!Number.isFinite(cur)) { txt.value = fmt(cur); return }
+      const c = clamp(cur)
+      if (c !== cur) doWrite(c)
+      else txt.value = fmt(cur)
+    }
     ui.bind(el, sig,   function ()  { if (!editing) txt.value = fmt(sig.peek()) })
-    ui.bind(el, minS,  function ()  { if (!editing) { const c = clamp(sig.peek()); if (c !== sig.peek()) doWrite(c); else txt.value = fmt(sig.peek()) } })
-    ui.bind(el, maxS,  function ()  { if (!editing) { const c = clamp(sig.peek()); if (c !== sig.peek()) doWrite(c); else txt.value = fmt(sig.peek()) } })
+    ui.bind(el, minS,  reclamp)
+    ui.bind(el, maxS,  reclamp)
     ui.bind(el, stepS, function ()  { if (!editing) txt.value = fmt(sig.peek()) })
     ui.bind(el, precS, function ()  { if (!editing) txt.value = fmt(sig.peek()) })
 

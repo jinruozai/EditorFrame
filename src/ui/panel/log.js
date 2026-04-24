@@ -77,21 +77,15 @@
   }
 
   function buildRow(entry) {
-    const lvlEl = ui.h('span', 'ef-ui-errlog-level ef-ui-errlog-level-' + entry.level, { text: entry.level.toUpperCase() })
-    const srcEl = ui.h('span', 'ef-ui-errlog-src', { text: formatSource(entry.source) })
-    const headRow = ui.h('div', 'ef-ui-errlog-head')
-    headRow.appendChild(lvlEl); headRow.appendChild(srcEl)
-    const msgEl = ui.h('div', 'ef-ui-errlog-msg', { text: entry.message })
-    const children = [headRow, msgEl]
-    if (entry.stack) {
-      children.push(ui.h('pre', 'ef-ui-errlog-stk', { text: entry.stack }))
-    }
-    const card = ui.card({ padded: true, children: children })
-    card.classList.add('ef-ui-errlog-row')
-    card.classList.add('ef-ui-errlog-row-' + entry.level)
-    card.title = 'click to dismiss'
-    card.addEventListener('click', function () { EF.dismissLog(entry.id) })
-    return card
+    const row = ui.h('div', 'ef-ui-errlog-row ef-ui-errlog-row-' + entry.level)
+    row.appendChild(ui.h('span', 'ef-ui-errlog-level ef-ui-errlog-level-' + entry.level, { text: entry.level.toUpperCase() }))
+    row.appendChild(ui.h('span', 'ef-ui-errlog-src',  { text: formatSource(entry.source) }))
+    row.appendChild(ui.h('span', 'ef-ui-errlog-msg',  { text: entry.message }))
+    // Stack trace lives in the entry data (and console.error fallback) but is
+    // not rendered — the log panel is a one-line scan, not a debugger.
+    row.title = entry.stack ? entry.message + '\n\n' + entry.stack : entry.message
+    row.addEventListener('click', function () { EF.dismissLog(entry.id) })
+    return row
   }
 
   function formatSource(s) {

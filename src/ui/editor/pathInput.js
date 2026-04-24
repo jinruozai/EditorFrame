@@ -35,6 +35,18 @@
     ui.bindAttr(btn, disabled, 'disabled')
     ui.bind(el, sig, function (v) { if (document.activeElement !== inp) inp.value = v || '' })
     inp.addEventListener('input', function () { doWrite(inp.value) })
+
+    // Accept drops: OS files → file.name; URL drops → the URL string.
+    ui.dropzone(el, {
+      accept: ['Files', 'text/uri-list', 'text/plain'],
+      canDrop: function () { return !disabled.peek() },
+      onDrop: function (d) {
+        if (d.files && d.files[0]) doWrite(d.files[0].name)
+        else if (d.uri)  doWrite(d.uri)
+        else if (d.text) doWrite(d.text)
+      },
+    })
+
     btn.addEventListener('click', function () {
       if (disabled.peek()) return
       if (o.useFileInput) {

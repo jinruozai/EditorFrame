@@ -56,6 +56,7 @@
     'range_float':  { name: 'Range (float)', base_type: 'float',  type_render: 'range',   default: 0,  mem: 'Float within a range',    type_agv: { min: 0, max: 1, step: 0.01 } },
 
     'bool':         { name: 'Bool',          base_type: 'int',    type_render: 'toggle',  default: 0,  mem: 'Boolean toggle' },
+    'percent':      { name: 'Percent',       base_type: 'float',  type_render: 'input_float', default: 0, mem: 'Fractional value displayed / parsed as %', type_agv: { decimal_places: 0, percent: true, step: 0.01 } },
     'color':        { name: 'Color',         base_type: 'int',    type_render: 'color',   default: 0,  mem: 'Color picker',     type_agv: { valueKind: 'int' } },
     'date':         { name: 'Date',          base_type: 'string', type_render: 'date',    default: '', mem: 'ISO date string' },
     'img':          { name: 'Image',         base_type: 'string', type_render: 'img',     default: '', mem: 'Image asset',      type_agv: { accept: '.png,.jpg,.jpeg,.gif,.webp' } },

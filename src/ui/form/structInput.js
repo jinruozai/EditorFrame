@@ -1,0 +1,64 @@
+// EF.ui.structInput — generic fixed-shape object editor.
+//
+// Renders one row per field; each row = [label · editor]. The editor for each
+// slot is produced by a caller-provided factory — this component does not
+// know about type_config or FieldDef. Use it anywhere you need a schema-less
+// "edit a record" UI.
+//
+// opts:
+//   value:    signal<object>                               required
+//   fields:   [{ key, label?, editor }]                    required
+//               editor(slotSig, write, ctx) → HTMLElement
+//   onChange?: (nextObj, changedKey, newValue) => void
+//               if absent, writes go straight into `value`
+//   ctx?:     any                                           forwarded to editor()
+//
+// Per-slot reactivity: each slot gets `fieldSig = derived(() => value()[key])`.
+// When `value` changes, only the fields whose value actually changed notify
+// their editor (derived's Object.is dirty-check filters the rest). The row
+// DOM is created once and never rebuilt for value changes — in-flight edits,
+// focus, pointer capture all survive external writes.
+;(function (EF) {
+  'use strict'
+  const ui = EF.ui = EF.ui || {}
+
+  ui.structInput = function (opts) {
+    const o = opts || {}
+    if (!ui.isSignal(o.value)) throw new Error('ui.structInput: `value` must be a signal')
+    const value    = o.value
+    const fields   = o.fields || []
+    const ctx      = o.ctx
+    const onChange = typeof o.onChange === 'function' ? o.onChange : null
+
+    const root = ui.h('div', 'ef-ui-struct-input')
+
+    fields.forEach(function (f) {
+      const row   = ui.h('div', 'ef-ui-struct-input-row')
+      const label = ui.h('div', 'ef-ui-struct-input-label', { title: f.label || f.key, text: f.label || f.key })
+      const cell  = ui.h('div', 'ef-ui-struct-input-cell')
+
+      const fieldSig = EF.derived(function () {
+        const cur = value()
+        return cur == null ? undefined : cur[f.key]
+      })
+      ui.collect(root, fieldSig.dispose)
+
+      const writeSlot = function (nv) {
+        const cur = value.peek() || {}
+        if (cur[f.key] === nv) return
+        const next = Object.assign({}, cur, { [f.key]: nv })
+        if (onChange) onChange(next, f.key, nv)
+        else value.set(next)
+      }
+
+      const editor = f.editor(fieldSig, writeSlot, ctx)
+      cell.appendChild(editor)
+      ui.collect(root, function () { ui.dispose(editor) })
+
+      row.appendChild(label); row.appendChild(cell)
+      root.appendChild(row)
+    })
+
+    return root
+  }
+})(window.EF = window.EF || {})

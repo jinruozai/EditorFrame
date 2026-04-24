@@ -33,32 +33,130 @@
 }
 
 /* ── tree ───────────────────────────────────────────────────────── */
+.ef-ui-tree {
+  position: relative;
+  height: 240px;
+  overflow-y: auto;
+  background: var(--ef-bg-1);
+  border: 1px solid var(--ef-border);
+  border-radius: var(--ef-r-2);
+  outline: none;
+}
+/* Container focus ring — keyboard only. :focus alone would light up on
+   every row click (since the tree is tabIndex=0 to receive key events),
+   which reads as a stray outer selection. :focus-visible suppresses that
+   path while preserving keyboard accessibility. */
+.ef-ui-tree:focus-visible { box-shadow: 0 0 0 2px var(--ef-accent-soft, var(--ef-accent)); }
+.ef-ui-tree-spacer { position: relative; width: 100%; }
+.ef-ui-tree-window {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  will-change: transform;
+}
 .ef-ui-tree-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 22px;
   width: 100%;
+  padding-right: 4px;
   font: var(--ef-fs-sm) var(--ef-font-ui);
   color: var(--ef-fg-1);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
+  box-sizing: border-box;
+  position: relative;
 }
 .ef-ui-tree-row:hover { background: var(--ef-hover); color: var(--ef-fg-0); }
 .ef-ui-tree-row-active { background: var(--ef-selected); color: var(--ef-fg-0); }
+.ef-ui-tree-row-focused { outline: 1px solid var(--ef-accent); outline-offset: -1px; }
+.ef-ui-tree-row-disabled { opacity: 0.45; cursor: default; }
+.ef-ui-tree-row-dragging { opacity: 0.4; }
 .ef-ui-tree-arrow {
-  display: inline-block;
-  width: 12px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  flex: 0 0 auto;
+  width: 14px; height: 14px;
   color: var(--ef-fg-2);
   font-size: 9px;
   cursor: pointer;
+  border-radius: var(--ef-r-1, 2px);
+}
+.ef-ui-tree-arrow:hover { color: var(--ef-fg-0); background: var(--ef-bg-3); }
+.ef-ui-tree-leading,
+.ef-ui-tree-icon {
+  display: inline-flex; align-items: center;
+  flex: 0 0 auto;
+  color: var(--ef-fg-2);
 }
 .ef-ui-tree-label {
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.ef-ui-tree-trailing {
+  display: inline-flex; align-items: center;
+  flex: 0 0 auto;
+  color: var(--ef-fg-3);
+}
+.ef-ui-tree-actions {
+  display: inline-flex; align-items: center; gap: 2px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  transition: opacity var(--ef-dur-fast, 80ms);
+}
+.ef-ui-tree-actions[data-visibility="hover"] { opacity: 0; }
+.ef-ui-tree-row:hover .ef-ui-tree-actions[data-visibility="hover"] { opacity: 1; }
+.ef-ui-tree-actions[data-visibility="selected"] { opacity: 0; }
+.ef-ui-tree-row-active .ef-ui-tree-actions[data-visibility="selected"] { opacity: 1; }
+.ef-ui-tree-match {
+  background: color-mix(in srgb, var(--ef-accent) 30%, transparent);
+  color: var(--ef-fg-0);
+  border-radius: var(--ef-r-1, 2px);
+  padding: 0 1px;
+}
+.ef-ui-tree-row-matched { /* subtle tint when in highlight mode */ }
+
+/* DnD indicator + ghost — live in a fixed portal, document-relative */
+.ef-ui-tree-dnd-portal { font: var(--ef-fs-sm) var(--ef-font-ui); }
+.ef-ui-tree-ghost-wrap {
+  position: fixed; left: 0; top: 0;
+  transform: translate(0, 0);
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0.9;
+}
+.ef-ui-tree-ghost {
+  background: var(--ef-bg-raised, var(--ef-bg-2));
+  color: var(--ef-fg-0);
+  border: 1px solid var(--ef-accent);
+  border-radius: var(--ef-r-2);
+  padding: 4px 10px;
+  box-shadow: var(--ef-shadow-lg, 0 8px 24px rgba(0,0,0,0.4));
+  font-weight: 500;
+}
+.ef-ui-tree-drop-indicator {
+  position: fixed;
+  pointer-events: none;
+  background: var(--ef-accent);
+  border-radius: 1px;
+  box-shadow: 0 0 4px var(--ef-accent);
+  transition: opacity var(--ef-dur-fast, 80ms);
+}
+.ef-ui-tree-drop-indicator.ef-ui-tree-drop-inside {
+  background: transparent;
+  border: 2px solid var(--ef-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ef-accent) 30%, transparent);
+  border-radius: var(--ef-r-2);
+}
+.ef-ui-tree-drop-indicator.ef-ui-tree-drop-reject {
+  background: var(--ef-error);
+  box-shadow: 0 0 4px var(--ef-error);
+}
+.ef-ui-tree-drop-indicator.ef-ui-tree-drop-inside.ef-ui-tree-drop-reject {
+  background: transparent;
+  border-color: var(--ef-error);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ef-error) 30%, transparent);
 }
 
 /* ── table ──────────────────────────────────────────────────────── */
@@ -130,22 +228,29 @@
 .ef-ui-crumbs-last { color: var(--ef-fg-0); font-weight: 600; }
 .ef-ui-crumbs-sep { color: var(--ef-fg-3); }
 
-/* ── progressBar ────────────────────────────────────────────────── */
-.ef-ui-progress {
-  position: relative;
+/* ── progressBar (linear + circle, sm/md/lg, default/success/warn/error) ── */
+.ef-ui-progress { position: relative; color: var(--ef-accent); }
+.ef-ui-progress-kind-success { color: var(--ef-success); }
+.ef-ui-progress-kind-warn    { color: var(--ef-warn); }
+.ef-ui-progress-kind-error   { color: var(--ef-error); }
+
+/* Linear */
+.ef-ui-progress-linear {
   width: 100%;
-  height: 6px;
   background: var(--ef-bg-2);
   border-radius: var(--ef-r-pill);
   overflow: hidden;
 }
+.ef-ui-progress-linear.ef-ui-progress-sm { height: 4px; }
+.ef-ui-progress-linear.ef-ui-progress-md { height: 6px; }
+.ef-ui-progress-linear.ef-ui-progress-lg { height: 10px; }
 .ef-ui-progress-fill {
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  background: var(--ef-accent);
+  background: currentColor;
   transition: width var(--ef-dur-med) var(--ef-ease);
 }
-.ef-ui-progress-ind .ef-ui-progress-fill {
+.ef-ui-progress-linear.ef-ui-progress-ind .ef-ui-progress-fill {
   width: 30% !important;
   animation: ef-progress-ind 1.4s ease-in-out infinite;
 }
@@ -153,9 +258,39 @@
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(400%); }
 }
+
+/* Circle */
+.ef-ui-progress:not(.ef-ui-progress-linear) { display: inline-flex; align-items: center; justify-content: center; }
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-sm { width: 28px; height: 28px; }
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-md { width: 40px; height: 40px; }
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-lg { width: 64px; height: 64px; }
+.ef-ui-progress-svg {
+  width: 100%; height: 100%;
+  transform: rotate(-90deg);                    /* 0% starts at 12 o'clock */
+}
+.ef-ui-progress-track-arc {
+  stroke: var(--ef-bg-2);
+  stroke-width: 3;
+}
+.ef-ui-progress-fill-arc {
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--ef-dur-med) var(--ef-ease);
+}
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-ind .ef-ui-progress-svg {
+  animation: ef-progress-spin 1s linear infinite;
+}
+.ef-ui-progress:not(.ef-ui-progress-linear).ef-ui-progress-ind .ef-ui-progress-fill-arc {
+  stroke-dasharray: 25 75 !important;
+}
+@keyframes ef-progress-spin { to { transform: rotate(270deg); } }
+
 @media (prefers-reduced-motion: reduce) {
   .ef-ui-progress-ind .ef-ui-progress-fill { animation: none; width: 100% !important; }
+  .ef-ui-progress-ind .ef-ui-progress-svg  { animation: none; }
 }
+
 .ef-ui-progress-label {
   position: absolute;
   left: 50%; top: 50%;
@@ -187,10 +322,8 @@
 .ef-ui-errlog .ef-ui-scrollarea {
   flex: 1 1 auto;
   min-height: 0;
-  padding: var(--ef-space-2);
   display: flex;
   flex-direction: column;
-  gap: var(--ef-space-2);
 }
 .ef-ui-errlog-empty {
   color: var(--ef-fg-2);
@@ -199,31 +332,30 @@
   padding: var(--ef-space-3);
 }
 .ef-ui-errlog-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ef-space-2);
+  padding: 3px var(--ef-space-2);
+  border-bottom: 1px solid var(--ef-border);
   cursor: pointer;
-  border-color: var(--ef-border);
+  font: var(--ef-fs-sm) var(--ef-font-ui);
   transition: background var(--ef-dur-fast) var(--ef-ease);
+  min-height: 22px;
 }
 .ef-ui-errlog-row:hover {
   background: var(--ef-bg-2);
 }
 .ef-ui-errlog-row-error {
-  border-color: color-mix(in srgb, var(--ef-error) 40%, var(--ef-border));
-  background: var(--ef-error-bg);
+  background: color-mix(in srgb, var(--ef-error) 8%, transparent);
 }
 .ef-ui-errlog-row-error:hover {
   background: color-mix(in srgb, var(--ef-error) 18%, var(--ef-bg-2));
 }
 .ef-ui-errlog-row-warn {
-  border-color: color-mix(in srgb, var(--ef-warn) 40%, var(--ef-border));
-  background: color-mix(in srgb, var(--ef-warn) 10%, var(--ef-bg-1));
-}
-.ef-ui-errlog-head {
-  display: flex;
-  gap: var(--ef-space-2);
-  align-items: center;
-  margin-bottom: 2px;
+  background: color-mix(in srgb, var(--ef-warn) 8%, transparent);
 }
 .ef-ui-errlog-level {
+  flex: 0 0 auto;
   font: var(--ef-fs-xs) var(--ef-font-mono);
   letter-spacing: .04em;
   padding: 1px var(--ef-space-1);
@@ -248,20 +380,17 @@
   color: var(--ef-fg-3);
 }
 .ef-ui-errlog-src {
+  flex: 0 0 auto;
   color: var(--ef-fg-3);
   font: var(--ef-fs-xs) var(--ef-font-mono);
   text-transform: uppercase;
   letter-spacing: .04em;
 }
 .ef-ui-errlog-msg {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--ef-fg-0);
-  font: var(--ef-fs-sm) var(--ef-font-ui);
-}
-.ef-ui-errlog-stk {
-  color: var(--ef-fg-2);
-  font: var(--ef-fs-xs)/var(--ef-lh-base) var(--ef-font-mono);
-  white-space: pre-wrap;
-  margin: var(--ef-space-1) 0 0;
-  max-height: 100px;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

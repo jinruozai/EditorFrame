@@ -218,6 +218,7 @@
 .ef-ui-check-mark {
   position: relative;
   width: 16px; height: 16px;
+  flex: 0 0 auto;                   /* never let narrow rows squash the mark into an ellipse */
   background: var(--ef-bg-2);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-2);
@@ -269,6 +270,7 @@
 .ef-ui-switch-track {
   position: relative;
   width: 30px; height: 16px;
+  flex: 0 0 auto;                   /* fixed-geometry indicator — no flex-shrink */
   background: var(--ef-bg-3);
   border: 1px solid var(--ef-border-input);
   border-radius: var(--ef-r-pill);
@@ -279,12 +281,15 @@
 .ef-ui-switch:hover .ef-ui-switch-track { border-color: var(--ef-c-07); }
 .ef-ui-switch-knob {
   position: absolute;
-  left: 1px; top: 1px;
+  top: 50%;                       /* vertical centering: independent of knob/track sizes */
+  transform: translateY(-50%);
+  left: 1px;                       /* 1px gap from the track's left inner edge */
   width: 12px; height: 12px;
   background: var(--ef-fg-0);
   border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 0 0 0 transparent;
-  transition: left var(--ef-dur-med) cubic-bezier(.34,1.56,.64,1),
+  transition: left  var(--ef-dur-med) cubic-bezier(.34,1.56,.64,1),
+              right var(--ef-dur-med) cubic-bezier(.34,1.56,.64,1),
               width var(--ef-dur-fast) var(--ef-ease),
               background var(--ef-dur-med) var(--ef-ease);
 }
@@ -295,15 +300,34 @@
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--ef-accent) 30%, transparent),
               inset 0 1px 2px rgba(0,0,0,.2);
 }
-.ef-ui-switch-on .ef-ui-switch-knob { left: 15px; background: #fff; }
-.ef-ui-switch:active.ef-ui-switch-on .ef-ui-switch-knob { left: 11px; }
+/* On-state: anchor to the right edge with the same 1px inset as the left.
+   The active squish (width: 16) still widens the knob; anchoring to `right`
+   means the growing width extends leftward — matching the off-state spring
+   without hardcoding pixel offsets. */
+.ef-ui-switch-on .ef-ui-switch-knob {
+  left: auto;
+  right: 1px;
+  background: #fff;
+}
 .ef-ui-switch-box:focus-visible + .ef-ui-switch-track {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ef-accent) 30%, transparent);
 }
 
 /* ── radio ──────────────────────────────────────────────────────── */
-.ef-ui-radio-group { display: inline-flex; gap: var(--ef-space-3); }
-.ef-ui-radio-vertical { flex-direction: column; gap: var(--ef-space-1); }
+/* flex-wrap so narrow containers push whole items onto a new row instead of
+   horizontally squashing the dots into ovals. row-gap controls the spacing
+   between wrapped lines; column-gap keeps horizontal spacing unchanged. */
+.ef-ui-radio-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  column-gap: var(--ef-space-3);
+  row-gap: var(--ef-space-1);
+}
+.ef-ui-radio-vertical {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  row-gap: var(--ef-space-1);
+}
 .ef-ui-radio {
   display: inline-flex;
   align-items: center;
@@ -315,6 +339,7 @@
 .ef-ui-radio-box { position: absolute; opacity: 0; width: 0; height: 0; }
 .ef-ui-radio-dot {
   width: 14px; height: 14px;
+  flex: 0 0 auto;                   /* fixed-geometry indicator — no flex-shrink */
   border: 1px solid var(--ef-border-input);
   background: var(--ef-bg-2);
   border-radius: 50%;
@@ -326,6 +351,7 @@
               transform    var(--ef-dur-fast) var(--ef-ease),
               box-shadow   var(--ef-dur-med) var(--ef-ease);
 }
+.ef-ui-radio-label { white-space: nowrap; }
 .ef-ui-radio-dot::after {
   content: '';
   width: 6px; height: 6px;
@@ -437,12 +463,19 @@
 }
 .ef-ui-select-open .ef-ui-select-arrow { transform: rotate(180deg); }
 
-/* Menu used by select / combobox / overlay menu. */
+/* Menu used by select / combobox / overlay menu. Lives in the portal root,
+ * which has no background of its own — without an explicit fill, the menu
+ * shows whatever is behind it. Use `--ef-bg-raised` so the menu reads as a
+ * lifted surface above any panel and stays legible across all themes. */
 .ef-ui-menu {
   display: flex;
   flex-direction: column;
   padding: var(--ef-space-1);
   min-width: 120px;
+  background: var(--ef-bg-raised);
+  border: 1px solid var(--ef-border);
+  border-radius: var(--ef-r-2);
+  box-shadow: var(--ef-shadow-md);
 }
 .ef-ui-menu-item {
   display: inline-flex;
@@ -666,6 +699,8 @@
   gap: var(--ef-space-1);
   padding: 0 var(--ef-space-3);
   height: var(--ef-tab-h);
+  min-width: 80px;
+  justify-content: center;
   background: transparent;
   border: 0;
   border-right: 1px solid var(--ef-border);
@@ -779,11 +814,12 @@
   color: var(--ef-fg-0);
 }
 
-/* compact variant — tighter padding, smaller glyph */
+/* compact variant — tighter padding, smaller glyph, no min-width */
 .ef-ui-tab-compact .ef-ui-tab-btn {
   height: calc(var(--ef-tab-h) - 4px);
   padding: 0 var(--ef-space-2);
   font-size: var(--ef-fs-sm);
+  min-width: 0;
 }
 
 /* vertical (auto for sidebar) */
@@ -810,6 +846,7 @@
   padding: 0;
   width: 32px;
   height: 32px;
+  min-width: 0;
   gap: 0;
 }
 .ef-ui-tab-icon-only .ef-ui-tab-icon { font-size: 16px; }
@@ -849,60 +886,55 @@
   overflow: auto;
 }
 
-/* ─── ui.propertyPanel + propertyEditor (schema-driven forms) ────── */
-.ef-ui-prop-panel { display: flex; flex-direction: column; min-width: 0; }
-.ef-ui-prop-panel-rows { display: flex; flex-direction: column; }
-.ef-ui-prop-row {
-  display: grid;
-  grid-template-columns: minmax(90px, 120px) minmax(0, 1fr);
-  gap: var(--ef-space-2);
-  align-items: center;
-  padding: var(--ef-space-1) 0;
-}
-.ef-ui-prop-label {
-  font: var(--ef-fs-sm) var(--ef-font-ui);
-  color: var(--ef-fg-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: help;
-}
-.ef-ui-prop-cell { min-width: 0; }
-.ef-ui-prop-cell > * { width: 100%; max-width: 100%; box-sizing: border-box; }
-.ef-ui-prop-panel-empty {
-  padding: var(--ef-space-4);
-  text-align: center;
-  color: var(--ef-fg-3);
-  font: var(--ef-fs-sm) var(--ef-font-ui);
-}
-
-/* Struct + array editors (recursive property editors). */
-.ef-ui-struct,
-.ef-ui-array {
+/* ─── ui.structInput / ui.arrayInput / ui.propertyPanel ────────────
+   Base appearance is the "nested" framed look, used anywhere these
+   components are embedded inside a larger form. ui.propertyPanel (which
+   wraps a top-level structInput) overrides those base styles below to get
+   the wider "inspector" layout. */
+.ef-ui-struct-input,
+.ef-ui-array-input {
   border: 1px solid var(--ef-border);
   border-radius: var(--ef-r-2);
   padding: var(--ef-space-1) var(--ef-space-2);
   background: color-mix(in srgb, var(--ef-bg-0) 50%, transparent);
 }
-.ef-ui-struct-row,
-.ef-ui-array-row {
+.ef-ui-struct-input-row,
+.ef-ui-array-input-row {
   display: grid;
-  grid-template-columns: 70px minmax(0, 1fr) auto;
   gap: var(--ef-space-1);
   align-items: center;
   padding: 2px 0;
 }
-.ef-ui-struct-label,
-.ef-ui-array-index {
+.ef-ui-struct-input-row { grid-template-columns: 70px minmax(0, 1fr); }
+.ef-ui-array-input-row  { grid-template-columns: auto minmax(0, 1fr) auto; }
+.ef-ui-struct-input-label,
+.ef-ui-array-input-index {
   font: var(--ef-fs-sm) var(--ef-font-mono);
   color: var(--ef-fg-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ef-ui-struct-cell,
-.ef-ui-array-cell { min-width: 0; }
-.ef-ui-struct-cell > *,
-.ef-ui-array-cell > * { width: 100%; max-width: 100%; box-sizing: border-box; }
-.ef-ui-array-items { display: flex; flex-direction: column; gap: 2px; }
-.ef-ui-array-add { align-self: flex-start; margin-top: var(--ef-space-1); }
+.ef-ui-struct-input-cell,
+.ef-ui-array-input-cell { min-width: 0; }
+.ef-ui-struct-input-cell > *,
+.ef-ui-array-input-cell > * { width: 100%; max-width: 100%; box-sizing: border-box; }
+.ef-ui-array-input-rows { display: flex; flex-direction: column; gap: 2px; }
+.ef-ui-array-input-add { align-self: flex-start; margin-top: var(--ef-space-1); }
+
+.ef-ui-property-panel { display: flex; flex-direction: column; min-width: 0; }
+.ef-ui-property-panel > .ef-ui-struct-input {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.ef-ui-property-panel > .ef-ui-struct-input > .ef-ui-struct-input-row {
+  grid-template-columns: minmax(90px, 120px) minmax(0, 1fr);
+  gap: var(--ef-space-2);
+  padding: var(--ef-space-1) 0;
+}
+.ef-ui-property-panel > .ef-ui-struct-input > .ef-ui-struct-input-row > .ef-ui-struct-input-label {
+  font: var(--ef-fs-sm) var(--ef-font-ui);
+  color: var(--ef-fg-2);
+  cursor: help;
+}

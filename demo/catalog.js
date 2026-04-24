@@ -445,6 +445,41 @@
       editFor: function (s) { return { placeholder: s.placeholder, disabled: s.disabled } },
     },
 
+    {
+      id: 'dateInput', name: 'Date Input', category: 'form',
+      description: 'Native date picker, framed like ui.input.',
+      signals: function () { return { value: EF.signal('2026-04-24'), disabled: EF.signal(false) } },
+      mount: function (s) { return ui.dateInput({ value: s.value, disabled: s.disabled }) },
+      editFor: function (s) { return { value: s.value, disabled: s.disabled } },
+    },
+
+    {
+      id: 'tab', name: 'Tab Strip', category: 'form',
+      description: 'General-purpose tab bar (three visual variants).',
+      signals: function () { return {
+        active:  EF.signal('overview'),
+        variant: EF.signal('bar'),
+      }},
+      mount: function (s) {
+        return ui.tab({
+          items: EF.signal([
+            { id: 'overview', title: 'Overview', icon: 'eye' },
+            { id: 'files',    title: 'Files',    icon: 'folder' },
+            { id: 'settings', title: 'Settings', icon: 'settings', badge: '2' },
+          ]),
+          active: s.active,
+          variant: s.variant,
+        })
+      },
+      editFor: function (s) { return {
+        variant: { signal: s.variant, options: [
+          { value: 'bar', label: 'bar' },
+          { value: 'compact', label: 'compact' },
+          { value: 'sidebar', label: 'sidebar' },
+        ]},
+      }},
+    },
+
     // ═════════════════════ EDITOR ═════════════════════
     {
       id: 'gradientInput', name: 'Gradient Input', category: 'editor',
@@ -467,8 +502,8 @@
       description: 'Cubic bezier easing curve editor.',
       signals: function () { return { value: EF.signal([0.42, 0, 0.58, 1]) } },
       mount: function (s) {
-        const wrap = ui.h('div', null, { style: 'width:220px;height:160px' })
-        wrap.appendChild(ui.curveInput({ value: s.value, presets: true }))
+        const wrap = ui.h('div', null, { style: 'height:200px' })
+        wrap.appendChild(ui.curveInput({ value: s.value }))
         return wrap
       },
       editFor: function () { return {} },
@@ -507,6 +542,70 @@
       description: 'Drop zone + click-to-pick file input.',
       signals: function () { return { value: EF.signal(null) } },
       mount: function (s) { return ui.fileInput({ value: s.value }) },
+      editFor: function () { return {} },
+    },
+
+    {
+      id: 'assetPicker', name: 'Asset Picker', category: 'editor',
+      description: 'Path + preview thumbnail. Drag in files / URLs; drag out to export.',
+      signals: function () { return {
+        value: EF.signal('https://picsum.photos/seed/ef/120'),
+        kind:  EF.signal('image'),
+      }},
+      mount: function (s) { return ui.assetPicker({ value: s.value, kind: s.kind.peek() }) },
+      editFor: function (s) { return {
+        value: s.value,
+        kind:  { signal: s.kind, options: [
+          { value: 'image', label: 'image' },
+          { value: 'audio', label: 'audio' },
+          { value: 'file',  label: 'file'  },
+        ]},
+      }},
+    },
+
+    {
+      id: 'arrayInput', name: 'Array Input', category: 'editor',
+      stageSize: 'lg',
+      description: 'Generic list editor — add / remove / edit per-row.',
+      signals: function () { return { value: EF.signal(['red', 'green', 'blue']) } },
+      mount: function (s) { return ui.arrayInput({ value: s.value }) },
+      editFor: function () { return {} },
+    },
+
+    {
+      id: 'structInput', name: 'Struct Input', category: 'editor',
+      stageSize: 'lg',
+      description: 'Fixed-shape object editor; caller supplies per-field renderer.',
+      signals: function () { return {
+        value: EF.signal({ title: 'Iron Sword', level: 3, equipped: true }),
+      }},
+      mount: function (s) {
+        return ui.structInput({
+          value: s.value,
+          fields: [
+            { key: 'title',    label: 'Title',    editor: (sig, write) => ui.input({ value: sig, onChange: write }) },
+            { key: 'level',    label: 'Level',    editor: (sig, write) => ui.numberInput({ value: sig, onChange: write, step: 1, precision: 0 }) },
+            { key: 'equipped', label: 'Equipped', editor: (sig, write) => ui.switch({ value: sig, onChange: write }) },
+          ],
+        })
+      },
+      editFor: function () { return {} },
+    },
+
+    {
+      id: 'propertyPanel', name: 'Property Panel', category: 'editor',
+      stageSize: 'lg',
+      description: 'Schema-driven form — resolves FieldDef / TypeDef via type_config.',
+      signals: function () { return {
+        value:  EF.signal({ name: 'Aria', hp: 120, active: true, tint: '#7b6ef6' }),
+        schema: EF.signal({
+          name:   { type: 'string' },
+          hp:     { type: 'int',   type_agv: { min: 0, max: 999 } },
+          active: { type: 'bool' },
+          tint:   { type: 'color' },
+        }),
+      }},
+      mount: function (s) { return ui.propertyPanel({ value: s.value, schema: s.schema }) },
       editFor: function () { return {} },
     },
 
@@ -680,18 +779,34 @@
 
     {
       id: 'progressBar', name: 'Progress Bar', category: 'data',
-      description: 'Determinate or indeterminate progress bar.',
+      description: 'Linear / circle, three sizes, four kinds, determinate or indeterminate.',
       signals: function () { return {
         value:         EF.signal(0.42),
         indeterminate: EF.signal(false),
-        label:         EF.signal('Loading…'),
+        label:         EF.signal('42%'),
+        shape:         EF.signal('linear'),
+        size:          EF.signal('md'),
+        kind:          EF.signal('default'),
       }},
       mount: function (s) {
-        const wrap = ui.h('div', null, { style: 'width:220px' })
-        wrap.appendChild(ui.progressBar({ value: s.value, indeterminate: s.indeterminate, label: s.label }))
+        const wrap = ui.h('div', null, { style: 'width:220px;display:flex;align-items:center;justify-content:center;min-height:64px' })
+        // Shape is picked once per instance (see component note); remount on swap.
+        EF.effect(function () {
+          const sh = s.shape()
+          wrap.innerHTML = ''
+          wrap.appendChild(ui.progressBar({
+            value: s.value, indeterminate: s.indeterminate, label: s.label,
+            shape: sh, size: s.size, kind: s.kind,
+          }))
+        })
         return wrap
       },
-      editFor: function (s) { return { value: s.value, indeterminate: s.indeterminate, label: s.label } },
+      editFor: function (s) { return {
+        value: s.value, indeterminate: s.indeterminate, label: s.label,
+        shape: { signal: s.shape, options: [{ value: 'linear', label: 'linear' }, { value: 'circle', label: 'circle' }] },
+        size:  { signal: s.size,  options: [{ value: 'sm', label: 'sm' }, { value: 'md', label: 'md' }, { value: 'lg', label: 'lg' }] },
+        kind:  { signal: s.kind,  options: [{ value: 'default', label: 'default' }, { value: 'success', label: 'success' }, { value: 'warn', label: 'warn' }, { value: 'error', label: 'error' }] },
+      }},
     },
 
     // ═════════════════════ OVERLAY ═════════════════════

@@ -11,7 +11,7 @@
 .ef-toolbar {
   display: flex;
   flex-shrink: 0;
-  background: var(--ef-bg-0);
+  background: var(--ef-bg-raised);
   align-items: stretch;
   user-select: none;
   min-height: var(--ef-toolbar-h);

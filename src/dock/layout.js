@@ -75,11 +75,40 @@
         tree.set(r.tree)
         return true
       },
+
+      // Toggle a dock's collapsed state by id OR name. Accepts the config
+      // `name` (assigned via EF.dock({ name: 'log' })) as a sugar — the
+      // names are more stable across layouts than framework-generated ids.
+      setDockCollapsed: function (idOrName, bool) {
+        const id = resolveDockId(tree.peek(), idOrName)
+        if (!id) return false
+        tree.set(EF.setCollapsed(tree.peek(), id, !!bool))
+        return true
+      },
     }
 
     // Expose the runtime on the handle for interactions.js (private use).
     handle._runtime = layout
     return handle
+  }
+
+  // Walk the tree for a dock whose id OR config-time name matches.
+  // The framework assigns opaque ids (dock-1, dock-2…); callers that
+  // need stable external references pass `name` at dock creation and
+  // pass the same string here. Returns the resolved id or null.
+  function resolveDockId(tree, idOrName) {
+    if (!idOrName) return null
+    let hit = null
+    function walk(n) {
+      if (!n || hit) return
+      if (n.type === 'dock') {
+        if (n.id === idOrName || n.name === idOrName) { hit = n.id; return }
+      } else if (n.children) {
+        for (let i = 0; i < n.children.length; i++) walk(n.children[i])
+      }
+    }
+    walk(tree)
+    return hit
   }
 
   // Compute seedPanels for a split — § 4.1: same widget as source's active
