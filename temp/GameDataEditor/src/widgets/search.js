@@ -1,0 +1,94 @@
+/**
+ * Global Search panel widget.
+ */
+(function () {
+  'use strict';
+
+  function createPanel(props, ctx) {
+    var root = document.createElement('div');
+    root.style.cssText = 'display:flex;flex-direction:column;height:100%;padding:8px;';
+
+    var input = document.createElement('input');
+    input.className = 'gde-search-input';
+
+    var countLine = document.createElement('div');
+    countLine.style.cssText = 'font-size:11px;color:var(--ef-fg-3,#8a8a90);margin-bottom:4px;';
+
+    var results = document.createElement('div');
+    results.style.cssText = 'flex:1;overflow:auto;margin-top:4px;';
+
+    root.appendChild(input); root.appendChild(countLine); root.appendChild(results);
+
+    var query = '';
+
+    function search() {
+      results.innerHTML = '';
+      if (!query) {
+        countLine.textContent = '';
+        var empty = document.createElement('div');
+        empty.style.cssText = 'padding:16px;color:var(--ef-fg-3,#8a8a90);font-size:12px;text-align:center;';
+        empty.textContent = t('search.empty');
+        results.appendChild(empty);
+        return;
+      }
+      var q = query.toLowerCase();
+      var tm = State.tableMap();
+      var gd = State.gameData();
+      var hits = [];
+      Object.keys(tm).forEach(function (pk) {
+        (tm[pk].id || []).forEach(function (id) {
+          var e = gd[id] || {};
+          var hit = null;
+          if (id.indexOf(q) >= 0) hit = { field: 'id', value: id };
+          else {
+            Object.keys(e).some(function (f) {
+              var v = e[f];
+              if (v == null) return false;
+              var s = typeof v === 'string' ? v : JSON.stringify(v);
+              if (s.toLowerCase().indexOf(q) >= 0) {
+                hit = { field: f, value: s };
+                return true;
+              }
+              return false;
+            });
+          }
+          if (hit) hits.push({ pathKey: pk, id: id, field: hit.field, value: hit.value });
+        });
+      });
+      countLine.textContent = hits.length ? t('search.result_count', { n: hits.length }) : t('search.no_results');
+      hits.slice(0, 200).forEach(function (h) {
+        var row = document.createElement('div');
+        row.className = 'gde-search-result';
+        var line1 = document.createElement('div');
+        line1.innerHTML = '<b>' + h.id + '</b> <span class="gde-sr-match">· ' + h.field + '</span>';
+        var line2 = document.createElement('div');
+        line2.className = 'gde-sr-path';
+        line2.textContent = h.pathKey + ' — ' + (h.value.length > 80 ? h.value.slice(0, 80) + '…' : h.value);
+        row.appendChild(line1); row.appendChild(line2);
+        row.addEventListener('click', function () {
+          EF.bus.emit('nav:goto', { pathKey: h.pathKey, id: h.id, field: h.field });
+        });
+        results.appendChild(row);
+      });
+    }
+
+    input.addEventListener('input', function () { query = input.value; search(); });
+
+    function applyLocale() {
+      input.placeholder = t('search.placeholder');
+      (function(__t){ if (ctx.panel && ctx.panel.title && ctx.panel.title()!==__t) ctx.panel.setTitle(__t); })(t('panel.search'));
+      search();
+    }
+    var offLocale = I18N.onChange(applyLocale);
+    ctx.onCleanup(offLocale);
+    ctx.bus.on('data:changed', search);
+
+    applyLocale();
+    return root;
+  }
+
+  EF.registerWidget('gde-search', {
+    create: createPanel,
+    defaults: function () { return { title: 'Search', props: {} }; },
+  });
+})();

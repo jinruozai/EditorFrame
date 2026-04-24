@@ -1,0 +1,291 @@
+/**
+ * Project TypeConfig panel.
+ *
+ * The list shows every project + built-in type. Clicking an item selects
+ * it through State.selection with kind='typeconfig', which Inspector
+ * renders as an editable TypeDef via the provider registered at the
+ * bottom of this file. Edits persist into projectTypeConfig — so editing
+ * a built-in type implicitly creates a project-level override.
+ */
+(function () {
+  'use strict';
+
+  var ui = EF.ui;
+
+  // ── Inspector provider for kind='typeconfig' ──────────────────
+  // Schema is memoized — propertyPanel only rebuilds its rows when the
+  // schema *reference* changes (Object.is check inside the schema effect).
+  // Returning a fresh object on every refresh() would rebuild every row's
+  // DOM on every keystroke, losing focus. One stable reference = focus
+  // survives edits. type_render options follow whichever renderers are
+  // currently registered at first lookup; rebuilding the cache happens only
+  // if a new renderer gets registered after this panel first opens.
+  var _schemaCache = null;
+  var _schemaKindCount = -1;
+  function buildTypeDefSchema() {
+    var kinds = ui.listRenderKinds();
+    if (_schemaCache && _schemaKindCount === kinds.length) return _schemaCache;
+    var kindOpts = {};
+    kinds.forEach(function (k) { kindOpts[k] = k; });
+    _schemaCache = {
+      key:         { type: 'string' },
+      name:        { type: 'string' },
+      base_type:   { type: 'enum_string', type_agv: { options: { int: 'int', float: 'float', string: 'string', struct: 'struct', array: 'array', var: 'var' } } },
+      type_render: { type: 'enum_string', type_agv: { options: kindOpts } },
+      'default':   { type: 'string', mem: 'Default value (JSON literal)' },
+      mem:         { type: 'string', mem: 'Description' },
+      type_agv:    { type: 'string', mem: 'Render args (JSON object)' },
+    };
+    _schemaKindCount = kinds.length;
+    return _schemaCache;
+  }
+
+  // Exposed so tables' struct_def override editor can render exactly the
+  // same rows as the TypeConfig panel (single source of truth for the
+  // TypeDef shape). Any change to the schema here flows to both UIs.
+  window.TypeDefSchema = {
+    build: buildTypeDefSchema,
+    // Identity keys — those whose values *define the type itself*, hence
+    // not overridable per-table. Consumers hide the edit/revert button
+    // and keep the editor disabled for these rows.
+    IDENTITY_KEYS: ['key', 'name', 'base_type'],
+  };
+
+  function toFormValue(td, key) {
+    var t = td || {};
+    return {
+      key:         key || '',
+      name:        t.name || '',
+      base_type:   t.base_type || 'string',
+      type_render: t.type_render || 'input_string',
+      'default':   JSON.stringify(t.default == null ? '' : t.default),
+      mem:         t.mem || '',
+      type_agv:    JSON.stringify(t.type_agv || {}),
+    };
+  }
+
+  function applyEdit(key, field, nv) {
+    if (field === 'key') {
+      if (!nv || nv === key) return;
+      try {
+        State.renameProjectType(key, nv);
+        State.setSelection({ kind: 'typeconfig', key: nv });
+      } catch (e) {
+        State.log('error', String(e.message || e));
+      }
+      return;
+    }
+    var current = State.resolveType(key) || {};
+    var patch = {};
+    if (field === 'default') {
+      try { patch[field] = JSON.parse(nv); } catch (_) { patch[field] = nv; }
+    } else if (field === 'type_agv') {
+      // Invalid JSON = silently skip; user keeps typing, the raw string
+      // stays in the input field until they make it parse cleanly.
+      try { patch[field] = JSON.parse(nv); } catch (_) { return; }
+    } else {
+      patch[field] = nv;
+    }
+    State.upsertProjectType(key, Object.assign({}, current, patch));
+  }
+
+  Inspector.registerKind('typeconfig', {
+    title:     function (sel) { return sel.key; },
+    disabled:  function (sel) { return !State.projectTypeConfig()[sel.key]; },
+    schema:    function ()    { return buildTypeDefSchema(); },
+    value:     function (sel) { return toFormValue(State.resolveType(sel.key), sel.key); },
+    onChange:  function (sel, field, nv) { applyEdit(sel.key, field, nv); },
+    dataTopic: function ()    { return 'typeconfig:changed'; },
+  });
+
+  // ── Panel widget ──────────────────────────────────────────────
+  function randomTypeName() {
+    var existing = Object.assign({}, State.builtinTypeConfig(), State.projectTypeConfig());
+    for (var i = 0; i < 100; i++) {
+      var hex = Math.floor(Math.random() * 0xffffff).toString(16);
+      while (hex.length < 6) hex = '0' + hex;
+      var n = 'type_' + hex;
+      if (!existing[n]) return n;
+    }
+    throw new Error('Could not generate a unique type name');
+  }
+
+  function createPanel(props, ctx) {
+    var root = document.createElement('div');
+    root.style.cssText = 'display:flex;flex-direction:column;height:100%;';
+
+    // Toolbar: [search] [+]
+    var bar = document.createElement('div');
+    bar.className = 'gde-tm-toolbar';
+    var filterSig      = EF.signal('');
+    var placeholderSig = EF.signal('');
+    var addTitleSig    = EF.signal(t('typeconfig.add'));
+    var searchInput = ui.input({ value: filterSig, placeholder: placeholderSig });
+    searchInput.style.cssText = 'flex:1 1 auto;min-width:0;';
+    var addBtn = ui.iconButton({
+      icon: 'plus', kind: 'primary', title: addTitleSig,
+      onClick: function () {
+        var key = randomTypeName();
+        State.upsertProjectType(key, {
+          name: '', base_type: 'string', type_render: 'input_string',
+          default: '', mem: '', type_agv: {},
+        });
+        State.setSelection({ kind: 'typeconfig', key: key });
+      },
+    });
+    bar.appendChild(searchInput); bar.appendChild(addBtn);
+
+    var list = document.createElement('div');
+    list.style.cssText = 'flex:1;overflow:auto;';
+
+    root.appendChild(bar); root.appendChild(list);
+
+    // Collapsed state per section survives re-renders.
+    var collapsed = { project: false, builtin: false };
+
+    function sectionHeader(id, text) {
+      var h = document.createElement('div');
+      h.className = 'gde-tc-section-head' + (collapsed[id] ? ' is-collapsed' : '');
+      var caret = document.createElement('span');
+      caret.className = 'gde-tc-section-caret';
+      caret.textContent = '▾';
+      var label = document.createElement('span');
+      label.textContent = text;
+      h.appendChild(caret); h.appendChild(label);
+      h.addEventListener('click', function () { collapsed[id] = !collapsed[id]; render(); });
+      return h;
+    }
+
+    function sectionBody(id) {
+      var b = document.createElement('div');
+      b.className = 'gde-tc-section-body' + (collapsed[id] ? ' is-collapsed' : '');
+      return b;
+    }
+
+    function buildItem(key, cfg, editable, active) {
+      var item = document.createElement('div');
+      item.className = 'gde-tc-item' + (active ? ' is-active' : '');
+      var nameRow = document.createElement('div');
+      nameRow.className = 'gde-tc-name';
+      nameRow.textContent = key;
+      if (cfg.name) {
+        var badge = document.createElement('span');
+        badge.className = 'gde-tc-badge';
+        badge.textContent = cfg.name;
+        nameRow.appendChild(badge);
+      }
+      var desc = document.createElement('div');
+      desc.className = 'gde-tc-desc';
+      desc.textContent = (cfg.base_type || '?') + ' · ' + (cfg.type_render || '?') + (cfg.mem ? ' — ' + cfg.mem : '');
+      item.appendChild(nameRow); item.appendChild(desc);
+
+      item.addEventListener('click', function () {
+        State.setSelection({ kind: 'typeconfig', key: key });
+      });
+      if (editable) {
+        item.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+          UIX.contextMenu({ x: e.clientX, y: e.clientY }, [
+            { label: t('typeconfig.ctx.delete'), danger: true, onSelect: function () { deleteType(key); } },
+          ]);
+        });
+      }
+      return item;
+    }
+
+    function render() {
+      list.innerHTML = '';
+      var filter    = (filterSig.peek() || '').toLowerCase();
+      var proj      = State.projectTypeConfig();
+      // All types known to the framework, minus the ones the project
+      // already overrides — the rest are shown as "built-in / read-only".
+      // Editing one of them creates a project override and moves it to
+      // the project section on next render.
+      var merged  = ui.getTypeConfig();
+      var builtin = {};
+      Object.keys(merged).forEach(function (k) { if (!(k in proj)) builtin[k] = merged[k]; });
+      var sel       = State.selection();
+      var activeKey = (sel && sel.kind === 'typeconfig') ? sel.key : null;
+
+      function matches(k) { return !filter || k.toLowerCase().indexOf(filter) >= 0; }
+
+      var projKeys = Object.keys(proj).filter(matches).sort();
+      var biKeys   = Object.keys(builtin).filter(matches).sort();
+
+      if (projKeys.length) {
+        list.appendChild(sectionHeader('project', t('typeconfig.project_note')));
+        var pBody = sectionBody('project');
+        projKeys.forEach(function (k) { pBody.appendChild(buildItem(k, proj[k], true, activeKey === k)); });
+        list.appendChild(pBody);
+      }
+      if (biKeys.length) {
+        list.appendChild(sectionHeader('builtin', t('typeconfig.builtin_note')));
+        var bBody = sectionBody('builtin');
+        biKeys.forEach(function (k) { bBody.appendChild(buildItem(k, builtin[k], false, activeKey === k)); });
+        list.appendChild(bBody);
+      }
+      if (!projKeys.length && !biKeys.length) {
+        var empty = document.createElement('div');
+        empty.style.cssText = 'padding:16px;color:var(--ef-fg-3);font-size:12px;text-align:center;';
+        empty.textContent = t('typeconfig.empty');
+        list.appendChild(empty);
+      }
+    }
+
+    function deleteType(key) {
+      var usages = State.findTypeUsages(key);
+      var title, msg;
+      if (usages.length > 0) {
+        title = t('typeconfig.delete_in_use_title') || 'Type is in use';
+        msg = t('typeconfig.delete_in_use', { name: key, n: usages.length })
+            + '\n\n' + usages.map(function (u) { return '• ' + u.pathKey + '.' + u.field; }).join('\n');
+      } else {
+        title = t('typeconfig.delete_confirm_title') || 'Delete type';
+        msg = t('typeconfig.delete_confirm', { name: key });
+      }
+      UIX.confirm({ title: title, message: msg, danger: true, okLabel: t('common.delete') || 'Delete' })
+        .then(function (ok) {
+          if (!ok) return;
+          if (usages.length > 0) {
+            var tm = State.tableMap();
+            Object.keys(tm).forEach(function (pk) {
+              var sd = Object.assign({}, tm[pk].struct_def || {});
+              var changed = false;
+              Object.keys(sd).forEach(function (f) {
+                if (sd[f] && sd[f].type === key) { delete sd[f]; changed = true; }
+              });
+              if (changed) State.updateStructDef(pk, sd);
+            });
+          }
+          // If the deleted type is currently selected in Inspector, clear.
+          var sel = State.selection();
+          if (sel && sel.kind === 'typeconfig' && sel.key === key) State.setSelection(null);
+          State.deleteProjectType(key);
+          State.log('warn', 'TypeConfig deleted: ' + key);
+        });
+    }
+
+    EF.effect(function () { filterSig(); render(); });
+    ctx.bus.on('typeconfig:changed', render);
+    ctx.bus.on('selection:changed',  render);
+
+    function applyLocale() {
+      (function (pt) {
+        if (ctx.panel && ctx.panel.title && ctx.panel.title() !== pt) ctx.panel.setTitle(pt);
+      })(t('panel.typeconfig'));
+      placeholderSig.set(t('typeconfig.search_placeholder'));
+      addTitleSig.set(t('typeconfig.add'));
+      render();
+    }
+    var offLocale = I18N.onChange(applyLocale);
+    ctx.onCleanup(offLocale);
+
+    applyLocale();
+    return root;
+  }
+
+  EF.registerWidget('gde-typeconfig', {
+    create: createPanel,
+    defaults: function () { return { title: 'TypeConfig', props: {} }; },
+  });
+})();

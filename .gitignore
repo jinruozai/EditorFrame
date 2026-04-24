@@ -6,4 +6,11 @@ Thumbs.db
 node_modules/
 
 # Project-local scratch for reviewing third-party projects that use this lib.
-/temp/
+# `/temp/*` (not `/temp/`) so individual subdirs can be un-ignored with `!`;
+# git's un-ignore rules won't cross an ignored parent directory.
+/temp/*
+# GameDataEditor is a reference demo we ship alongside the framework (shows
+# off tree / DnD / property panel / type_config in anger). It lives under
+# /temp/ so the library build pipeline still ignores it by path, but it IS
+# tracked in the repo.
+!/temp/GameDataEditor/
